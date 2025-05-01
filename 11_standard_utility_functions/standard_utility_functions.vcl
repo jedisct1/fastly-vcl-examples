@@ -7,12 +7,52 @@
  */
 
 /**
- * SECTION 1: STRING CASE MANIPULATION FUNCTIONS
- * 
- * These functions help manipulate the case of strings.
+ * FUNCTION GROUP: STRING CASE MANIPULATION FUNCTIONS
+ *
+ * The following functions help manipulate the case of strings:
  * - std.tolower: Converts a string to lowercase
  * - std.toupper: Converts a string to uppercase
  * - std.strcasecmp: Compares two strings case-insensitively
+ */
+
+/**
+ * FUNCTION: std.tolower
+ *
+ * PURPOSE: Converts a string to lowercase
+ * SYNTAX: std.tolower(STRING string)
+ *
+ * PARAMETERS:
+ *   - string: The string to convert to lowercase
+ *
+ * RETURN VALUE: The input string converted to lowercase
+ */
+
+/**
+ * FUNCTION: std.toupper
+ *
+ * PURPOSE: Converts a string to uppercase
+ * SYNTAX: std.toupper(STRING string)
+ *
+ * PARAMETERS:
+ *   - string: The string to convert to uppercase
+ *
+ * RETURN VALUE: The input string converted to uppercase
+ */
+
+/**
+ * FUNCTION: std.strcasecmp
+ *
+ * PURPOSE: Compares two strings case-insensitively
+ * SYNTAX: std.strcasecmp(STRING string1, STRING string2)
+ *
+ * PARAMETERS:
+ *   - string1: The first string to compare
+ *   - string2: The second string to compare
+ *
+ * RETURN VALUE:
+ *   - 0 if the strings are equal (ignoring case)
+ *   - Negative value if string1 is less than string2
+ *   - Positive value if string1 is greater than string2
  */
 
 sub vcl_recv {
@@ -99,9 +139,9 @@ sub vcl_recv {
     set req.http.X-Sort-Order = "default";
   }
 /**
- * SECTION 2: STRING SEARCH AND MANIPULATION FUNCTIONS
- * 
- * These functions help search within strings and manipulate string content.
+ * FUNCTION GROUP: STRING SEARCH AND MANIPULATION FUNCTIONS
+ *
+ * The following functions help search within strings and manipulate string content:
  * - std.strstr: Finds the first occurrence of a substring
  * - std.prefixof: Checks if a string starts with a prefix
  * - std.suffixof: Checks if a string ends with a suffix
@@ -112,6 +152,151 @@ sub vcl_recv {
  * - std.strrev: Reverses a string
  * - std.strpad: Pads a string to a specified length
  * - std.strrep: Repeats a string a specified number of times
+ */
+
+/**
+ * FUNCTION: std.strstr
+ *
+ * PURPOSE: Finds the first occurrence of a substring
+ * SYNTAX: std.strstr(STRING haystack, STRING needle)
+ *
+ * PARAMETERS:
+ *   - haystack: The string to search in
+ *   - needle: The substring to search for
+ *
+ * RETURN VALUE:
+ *   - The 0-based index of the first occurrence of needle in haystack
+ *   - -1 if needle is not found in haystack
+ */
+
+/**
+ * FUNCTION: std.prefixof
+ *
+ * PURPOSE: Checks if a string starts with a prefix
+ * SYNTAX: std.prefixof(STRING prefix, STRING string)
+ *
+ * PARAMETERS:
+ *   - prefix: The prefix to check for
+ *   - string: The string to check
+ *
+ * RETURN VALUE:
+ *   - TRUE if string starts with prefix
+ *   - FALSE otherwise
+ */
+
+/**
+ * FUNCTION: std.suffixof
+ *
+ * PURPOSE: Checks if a string ends with a suffix
+ * SYNTAX: std.suffixof(STRING suffix, STRING string)
+ *
+ * PARAMETERS:
+ *   - suffix: The suffix to check for
+ *   - string: The string to check
+ *
+ * RETURN VALUE:
+ *   - TRUE if string ends with suffix
+ *   - FALSE otherwise
+ */
+
+/**
+ * FUNCTION: std.replace
+ *
+ * PURPOSE: Replaces the first occurrence of a substring
+ * SYNTAX: std.replace(STRING string, STRING search, STRING replacement)
+ *
+ * PARAMETERS:
+ *   - string: The string to modify
+ *   - search: The substring to search for
+ *   - replacement: The string to replace search with
+ *
+ * RETURN VALUE: A new string with the first occurrence of search replaced by replacement
+ */
+
+/**
+ * FUNCTION: std.replaceall
+ *
+ * PURPOSE: Replaces all occurrences of a substring
+ * SYNTAX: std.replaceall(STRING string, STRING search, STRING replacement)
+ *
+ * PARAMETERS:
+ *   - string: The string to modify
+ *   - search: The substring to search for
+ *   - replacement: The string to replace search with
+ *
+ * RETURN VALUE: A new string with all occurrences of search replaced by replacement
+ */
+
+/**
+ * FUNCTION: std.replace_prefix
+ *
+ * PURPOSE: Replaces the prefix of a string
+ * SYNTAX: std.replace_prefix(STRING string, STRING prefix, STRING replacement)
+ *
+ * PARAMETERS:
+ *   - string: The string to modify
+ *   - prefix: The prefix to replace
+ *   - replacement: The string to replace prefix with
+ *
+ * RETURN VALUE:
+ *   - A new string with prefix replaced by replacement if string starts with prefix
+ *   - The original string otherwise
+ */
+
+/**
+ * FUNCTION: std.replace_suffix
+ *
+ * PURPOSE: Replaces the suffix of a string
+ * SYNTAX: std.replace_suffix(STRING string, STRING suffix, STRING replacement)
+ *
+ * PARAMETERS:
+ *   - string: The string to modify
+ *   - suffix: The suffix to replace
+ *   - replacement: The string to replace suffix with
+ *
+ * RETURN VALUE:
+ *   - A new string with suffix replaced by replacement if string ends with suffix
+ *   - The original string otherwise
+ */
+
+/**
+ * FUNCTION: std.strrev
+ *
+ * PURPOSE: Reverses a string
+ * SYNTAX: std.strrev(STRING string)
+ *
+ * PARAMETERS:
+ *   - string: The string to reverse
+ *
+ * RETURN VALUE: A new string with the characters in reverse order
+ */
+
+/**
+ * FUNCTION: std.strpad
+ *
+ * PURPOSE: Pads a string to a specified length
+ * SYNTAX: std.strpad(STRING string, INTEGER length, STRING pad, STRING direction)
+ *
+ * PARAMETERS:
+ *   - string: The string to pad
+ *   - length: The desired length of the result
+ *   - pad: The character(s) to use for padding
+ *   - direction: The direction to pad ("left", "right", or "both")
+ *
+ * RETURN VALUE: A new string padded to the specified length
+ */
+
+/**
+ * FUNCTION: std.strrep
+ *
+ * PURPOSE: Repeats a string a specified number of times
+ * SYNTAX: std.strrep(STRING string, INTEGER count)
+ *
+ * PARAMETERS:
+ *   - string: The string to repeat
+ *   - count: The number of times to repeat the string
+ *
+ * RETURN VALUE: A new string consisting of string repeated count times
  */
 
 sub vcl_recv {
@@ -226,9 +411,9 @@ sub vcl_recv {
 }
 }
 /**
- * SECTION 3: TYPE CONVERSION FUNCTIONS
- * 
- * These functions help convert between different data types.
+ * FUNCTION GROUP: TYPE CONVERSION FUNCTIONS
+ *
+ * The following functions help convert between different data types:
  * - std.atoi: Converts a string to an integer
  * - std.atof: Converts a string to a float
  * - std.strtol: Converts a string to a long integer with a specified base
@@ -236,6 +421,92 @@ sub vcl_recv {
  * - std.itoa: Converts an integer to a string
  * - std.itoa_charset: Converts an integer to a string using a custom character set
  * - std.integer2time: Converts an integer to a time value
+ */
+
+/**
+ * FUNCTION: std.atoi
+ *
+ * PURPOSE: Converts a string to an integer
+ * SYNTAX: std.atoi(STRING string)
+ *
+ * PARAMETERS:
+ *   - string: The string to convert to an integer
+ *
+ * RETURN VALUE: The integer value of the string
+ */
+
+/**
+ * FUNCTION: std.atof
+ *
+ * PURPOSE: Converts a string to a float
+ * SYNTAX: std.atof(STRING string)
+ *
+ * PARAMETERS:
+ *   - string: The string to convert to a float
+ *
+ * RETURN VALUE: The float value of the string
+ */
+
+/**
+ * FUNCTION: std.strtol
+ *
+ * PURPOSE: Converts a string to a long integer with a specified base
+ * SYNTAX: std.strtol(STRING string, INTEGER base)
+ *
+ * PARAMETERS:
+ *   - string: The string to convert
+ *   - base: The numeric base to use (e.g., 10 for decimal, 16 for hexadecimal)
+ *
+ * RETURN VALUE: The integer value of the string in the specified base
+ */
+
+/**
+ * FUNCTION: std.strtof
+ *
+ * PURPOSE: Converts a string to a float with additional control
+ * SYNTAX: std.strtof(STRING string)
+ *
+ * PARAMETERS:
+ *   - string: The string to convert to a float
+ *
+ * RETURN VALUE: The float value of the string
+ */
+
+/**
+ * FUNCTION: std.itoa
+ *
+ * PURPOSE: Converts an integer to a string
+ * SYNTAX: std.itoa(INTEGER value)
+ *
+ * PARAMETERS:
+ *   - value: The integer to convert
+ *
+ * RETURN VALUE: The string representation of the integer
+ */
+
+/**
+ * FUNCTION: std.itoa_charset
+ *
+ * PURPOSE: Converts an integer to a string using a custom character set
+ * SYNTAX: std.itoa_charset(INTEGER value, STRING charset)
+ *
+ * PARAMETERS:
+ *   - value: The integer to convert
+ *   - charset: The character set to use for the conversion
+ *
+ * RETURN VALUE: The string representation of the integer using the specified character set
+ */
+
+/**
+ * FUNCTION: std.integer2time
+ *
+ * PURPOSE: Converts an integer to a time value
+ * SYNTAX: std.integer2time(INTEGER timestamp)
+ *
+ * PARAMETERS:
+ *   - timestamp: The Unix timestamp (seconds since epoch)
+ *
+ * RETURN VALUE: The corresponding TIME value
  */
 
 sub vcl_recv {
@@ -356,13 +627,61 @@ sub vcl_recv {
   set req.http.X-Formatted-Time = strftime("%Y-%m-%d %H:%M:%S", var.time);
 }
 /**
- * SECTION 4: IP ADDRESS FUNCTIONS
- * 
- * These functions help work with IP addresses.
+ * FUNCTION GROUP: IP ADDRESS FUNCTIONS
+ *
+ * The following functions help work with IP addresses:
  * - std.ip: Converts a string to an IP address
  * - std.str2ip: Converts a string to an IPv4 address
  * - std.anystr2ip: Converts a string to an IP address (IPv4 or IPv6)
  * - std.ip2str: Converts an IP address to a string
+ */
+
+/**
+ * FUNCTION: std.ip
+ *
+ * PURPOSE: Converts a string to an IP address
+ * SYNTAX: std.ip(STRING string)
+ *
+ * PARAMETERS:
+ *   - string: The string representation of an IP address
+ *
+ * RETURN VALUE: The IP address object
+ */
+
+/**
+ * FUNCTION: std.str2ip
+ *
+ * PURPOSE: Converts a string to an IPv4 address
+ * SYNTAX: std.str2ip(STRING string)
+ *
+ * PARAMETERS:
+ *   - string: The string representation of an IPv4 address
+ *
+ * RETURN VALUE: The IPv4 address object
+ */
+
+/**
+ * FUNCTION: std.anystr2ip
+ *
+ * PURPOSE: Converts a string to an IP address (IPv4 or IPv6)
+ * SYNTAX: std.anystr2ip(STRING string)
+ *
+ * PARAMETERS:
+ *   - string: The string representation of an IP address (IPv4 or IPv6)
+ *
+ * RETURN VALUE: The IP address object
+ */
+
+/**
+ * FUNCTION: std.ip2str
+ *
+ * PURPOSE: Converts an IP address to a string
+ * SYNTAX: std.ip2str(IP ip)
+ *
+ * PARAMETERS:
+ *   - ip: The IP address object
+ *
+ * RETURN VALUE: The string representation of the IP address
  */
 
 sub vcl_recv {
@@ -456,11 +775,35 @@ sub vcl_recv {
 }
 
 /**
- * SECTION 5: PATH MANIPULATION FUNCTIONS
- * 
- * These functions help work with file paths.
+ * FUNCTION GROUP: PATH MANIPULATION FUNCTIONS
+ *
+ * The following functions help work with file paths:
  * - std.basename: Gets the filename part of a path
  * - std.dirname: Gets the directory part of a path
+ */
+
+/**
+ * FUNCTION: std.basename
+ *
+ * PURPOSE: Gets the filename part of a path
+ * SYNTAX: std.basename(STRING path)
+ *
+ * PARAMETERS:
+ *   - path: The file path
+ *
+ * RETURN VALUE: The filename part of the path
+ */
+
+/**
+ * FUNCTION: std.dirname
+ *
+ * PURPOSE: Gets the directory part of a path
+ * SYNTAX: std.dirname(STRING path)
+ *
+ * PARAMETERS:
+ *   - path: The file path
+ *
+ * RETURN VALUE: The directory part of the path
  */
 
 sub vcl_recv {
@@ -555,11 +898,35 @@ sub vcl_recv {
   }
 }
 /**
- * SECTION 6: COLLECTION AND COUNTING FUNCTIONS
- * 
- * These functions help work with collections of values.
+ * FUNCTION GROUP: COLLECTION AND COUNTING FUNCTIONS
+ *
+ * The following functions help work with collections of values:
  * - std.collect: Collects multiple values into a string
  * - std.count: Counts the number of values in a string
+ */
+
+/**
+ * FUNCTION: std.collect
+ *
+ * PURPOSE: Collects multiple values into a string
+ * SYNTAX: std.collect(STRING value1, STRING value2, ...)
+ *
+ * PARAMETERS:
+ *   - value1, value2, ...: The values to collect
+ *
+ * RETURN VALUE: A comma-separated string containing all the values
+ */
+
+/**
+ * FUNCTION: std.count
+ *
+ * PURPOSE: Counts the number of values in a string
+ * SYNTAX: std.count(STRING string)
+ *
+ * PARAMETERS:
+ *   - string: The comma-separated string to count values in
+ *
+ * RETURN VALUE: The number of values in the string
  */
 
 sub vcl_recv {
