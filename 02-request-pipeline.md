@@ -1,501 +1,345 @@
-# The HTTP Request Pipeline in Fastly VCL
+# How Fastly Processes HTTP Requests: A Simple Guide
 
-## Overview
+## Introduction
 
-The HTTP request pipeline in Fastly VCL consists of a series of subroutines that are executed in a specific order as a request is processed. Each subroutine represents a different stage in the request lifecycle, and you can customize the behavior at each stage by adding your own VCL code.
+When you visit a website, your browser sends an HTTP request that travels through the internet to reach a server. Fastly sits between your browser and the origin server, acting as a helpful middleman that can speed things up and add special features.
 
-Understanding this pipeline is crucial for effective VCL development, as it determines when and where your custom logic will be executed.
+This guide explains how Fastly processes these requests in a way that's easy to understand, even if you're new to the platform.
 
-## The VCL State Machine
+## The Big Picture: Request Journey
 
-Fastly processes HTTP requests through a state machine, where each state corresponds to a VCL subroutine. The flow between states is determined by the return values from each subroutine.
+Think of Fastly like a smart postal service for the web. When a request arrives, it goes through several checkpoints, each with a specific job:
 
-Here's a visual representation of the VCL state machine:
+1. **Reception Desk** (`vcl_recv`): Greets the request and decides what to do with it
+2. **Filing System** (`vcl_hash`): Creates a unique label to organize and find content
+3. **Storage Check**: Looks for the requested content in storage
+   - If found → **Found It!** (`vcl_hit`)
+   - If not found → **Need to Get It** (`vcl_miss`)
+4. **Retrieval** (`vcl_fetch`): Gets content from the origin server when needed
+5. **Packaging** (`vcl_deliver`): Prepares the response before sending it back
+6. **Record Keeping** (`vcl_log`): Takes notes about what happened
+
+Each checkpoint can make decisions that affect where the request goes next. This flow of decisions is what we call the "request pipeline."
+
+## Visual Journey Map
+
+Here's a simplified map of how requests travel through Fastly:
 
 ```
-           ┌─────────────┐
-           │   Client    │
-           │   Request   │
-           └──────┬──────┘
-                  │
-                  ▼
-           ┌─────────────┐
-           │  vcl_recv   │◄────────────┐
-           └──────┬──────┘             │
-                  │                    │
-         ┌────────┴────────┐           │
-         │                 │           │
-         ▼                 ▼           │
-┌─────────────┐     ┌─────────────┐    │
-│    pass     │     │   lookup    │    │
-└──────┬──────┘     └──────┬──────┘    │
-       │                   │           │
-       │                   │           │
-       │             ┌─────┴─────┐     │
-       │             │           │     │
-       │             ▼           ▼     │
-       │      ┌─────────┐  ┌─────────┐ │
-       │      │ vcl_hit │  │ vcl_miss│ │
-       │      └────┬────┘  └────┬────┘ │
-       │           │            │      │
-       │           │            │      │
-       │           │            ▼      │
-       │           │      ┌──────────┐ │
-       │           │      │ vcl_fetch│ │
-       │           │      └────┬─────┘ │
-       │           │           │       │
-       ▼           ▼           ▼       │
-┌─────────────────────────────────┐    │
-│           vcl_deliver           │    │
-└──────────────┬──────────────────┘    │
-               │                       │
-               ▼                       │
-        ┌─────────────┐                │
-        │   vcl_log   │                │
-        └──────┬──────┘                │
-               │                       │
-               ▼                       │
-        ┌─────────────┐                │
-        │   restart?  │────yes─────────┘
-        └──────┬──────┘
-               │no
-               ▼
-        ┌─────────────┐
-        │   Client    │
-        │   Response  │
-        └─────────────┘
+                  ┌─────────────┐
+                  │   Request   │
+                  │   Arrives   │
+                  └──────┬──────┘
+                         │
+                         ▼
+                  ┌─────────────┐
+                  │  Reception  │
+                  │  (vcl_recv) │◄────────────┐
+                  └──────┬──────┘             │
+                         │                    │
+                ┌────────┴────────┐           │
+                │                 │           │
+                ▼                 ▼           │
+       ┌─────────────┐     ┌─────────────┐    │
+       │ Skip Cache  │     │ Check Cache │    │
+       │  (pass)     │     │  (lookup)   │    │
+       └──────┬──────┘     └──────┬──────┘    │
+              │                   │           │
+              │                   │           │
+              │             ┌─────┴─────┐     │
+              │             │           │     │
+              │             ▼           ▼     │
+              │      ┌─────────┐  ┌─────────┐ │
+              │      │ Found!  │  │Not Found│ │
+              │      │(vcl_hit)│  │(vcl_miss)│ │
+              │      └────┬────┘  └────┬────┘ │
+              │           │            │      │
+              │           │            ▼      │
+              │           │      ┌──────────┐ │
+              │           │      │ Get from │ │
+              │           │      │  Origin  │ │
+              │           │      │(vcl_fetch)│ │
+              │           │      └────┬─────┘ │
+              │           │           │       │
+              ▼           ▼           ▼       │
+       ┌─────────────────────────────────┐    │
+       │         Package Response        │    │
+       │          (vcl_deliver)          │    │
+       └──────────────┬──────────────────┘    │
+                      │                       │
+                      ▼                       │
+               ┌─────────────┐                │
+               │ Record Log  │                │
+               │ (vcl_log)   │                │
+               └──────┬──────┘                │
+                      │                       │
+                      ▼                       │
+               ┌─────────────┐                │
+               │   Restart?  │────Yes─────────┘
+               └──────┬──────┘
+                      │No
+                      ▼
+               ┌─────────────┐
+               │   Send to   │
+               │   Browser   │
+               └─────────────┘
 ```
 
-## Subroutines in Detail
+## The Checkpoints Explained
 
-### vcl_recv
+Let's look at each checkpoint in more detail, with simple examples:
 
-**Purpose**: This is the first subroutine executed when a request is received. It's used for request processing, manipulation, and routing decisions.
+### 1. Reception Desk (vcl_recv)
 
-**Common Tasks**:
-- URL normalization
-- Header manipulation
-- Backend selection
-- Authentication checks
-- Request filtering
-- Bot detection
-- A/B testing logic
+**What it does**: This is where Fastly first meets your request. It can:
+- Clean up the URL
+- Check if you're logged in
+- Decide which server should handle your request
+- Block unwanted visitors
 
-**Possible Return Values**:
-- `hash`: Proceed to `vcl_hash` to determine the cache key (default)
-- `pass`: Bypass cache lookup and proceed to `vcl_pass`
-- `error`: Jump to `vcl_error` with a specified status code
-- `restart`: Restart the request processing from the beginning (limited to 3 restarts)
+**Example**: Imagine you're visiting an online store. The reception desk might:
+- Remove tracking parameters from the URL
+- Check if you have a login cookie
+- Send you to the mobile version if you're on a phone
 
-**Example**:
 ```vcl
 sub vcl_recv {
-    # Normalize URL to improve cache hit ratio
-    if (req.url ~ "(\?|&)(utm_source|utm_medium|utm_campaign|gclid|fbclid)=") {
-        set req.url = regsuball(req.url, "&?(utm_source|utm_medium|utm_campaign|gclid|fbclid)=([^&]*)", "");
+    # Remove tracking parameters from URL
+    if (req.url ~ "(\?|&)(utm_source|utm_medium)=") {
+        set req.url = regsuball(req.url, "&?(utm_source|utm_medium)=([^&]*)", "");
         set req.url = regsuball(req.url, "\?&", "?");
         set req.url = regsub(req.url, "\?$", "");
     }
     
-    # Route API requests to a specific backend
+    # Send API requests to a special server
     if (req.url ~ "^/api/") {
-        set req.backend = F_api_backend;
+        set req.backend = F_api_server;
     }
     
-    # Force cache miss for logged-in users
+    # Skip cache for logged-in users
     if (req.http.Cookie ~ "session=") {
         return(pass);
     }
 }
 ```
 
-### vcl_hash
+### 2. Filing System (vcl_hash)
 
-**Purpose**: Determines the cache key for the request, which is used to identify cached objects.
+**What it does**: Creates a unique identifier (like a fingerprint) for the content. This helps Fastly find cached content quickly.
 
-**Common Tasks**:
-- Adding custom components to the cache key
-- Varying cache based on cookies, headers, or other request attributes
+**Example**: When filing a product page, Fastly might consider:
+- The URL
+- The website name
+- Whether you're on mobile or desktop
+- Your country (for localized content)
 
-**Possible Return Values**:
-- `hash`: Proceed to cache lookup (default and only option)
-
-**Example**:
 ```vcl
 sub vcl_hash {
-    # Default hash
+    # Basic information
     hash_data(req.url);
+    hash_data(req.http.host);
     
-    if (req.http.host) {
-        hash_data(req.http.host);
-    } else {
-        hash_data(server.ip);
-    }
-    
-    # Vary cache based on mobile vs desktop
-    if (req.http.User-Agent ~ "Mobile|Android|iPhone") {
+    # Different versions for mobile and desktop
+    if (req.http.User-Agent ~ "Mobile") {
         hash_data("mobile");
     } else {
         hash_data("desktop");
     }
-    
-    # Vary cache based on country
-    if (req.http.X-Country-Code) {
-        hash_data(req.http.X-Country-Code);
-    }
-    
-    return(hash);
 }
 ```
 
-### vcl_hit
+### 3A. Found It! (vcl_hit)
 
-**Purpose**: Executed when the requested object is found in the cache.
+**What it does**: Handles requests when the content is already in Fastly's cache.
 
-**Common Tasks**:
-- Deciding whether to serve the cached object
-- Conditional cache invalidation
-- Handling stale objects
+**Example**: Fastly found the product page you requested in its cache. It can:
+- Deliver it immediately
+- Check if it's too old and needs refreshing
+- Decide if you should get a personalized version instead
 
-**Possible Return Values**:
-- `deliver`: Deliver the cached object to the client (default)
-- `pass`: Bypass the cache and fetch from the backend
-- `restart`: Restart the request processing
-- `error`: Jump to `vcl_error` with a specified status code
-
-**Example**:
 ```vcl
 sub vcl_hit {
-    # Don't serve cached content to authenticated users
-    if (req.http.Cookie ~ "session=" && obj.ttl > 0s) {
+    # Don't use cache for logged-in users
+    if (req.http.Cookie ~ "session=") {
         return(pass);
     }
     
-    # Serve stale content if backend is unhealthy
+    # Use cached content even if origin is down
     if (!req.backend.healthy && obj.ttl + obj.grace > 0s) {
         return(deliver);
     }
-    
-    # Force cache refresh for certain URLs every hour
-    if (req.url ~ "^/dynamic-content/" && obj.ttl < 3600s) {
-        return(pass);
-    }
-    
-    return(deliver);
 }
 ```
 
-### vcl_miss
+### 3B. Need to Get It (vcl_miss)
 
-**Purpose**: Executed when the requested object is not found in the cache.
+**What it does**: Handles requests when the content is not in Fastly's cache.
 
-**Common Tasks**:
-- Deciding whether to fetch the object from the backend
-- Setting backend-specific parameters
-- Conditional request routing
+**Example**: Fastly couldn't find the product page in its cache, so it needs to:
+- Prepare to ask the origin server
+- Set timeouts for how long to wait
+- Add any special headers the origin needs
 
-**Possible Return Values**:
-- `fetch`: Fetch the object from the backend (default)
-- `pass`: Bypass cache storage and fetch from the backend
-- `error`: Jump to `vcl_error` with a specified status code
-- `deliver_stale`: Deliver stale content if available
-
-**Example**:
 ```vcl
 sub vcl_miss {
-    # Set longer timeout for specific URLs
-    if (req.url ~ "^/api/long-running/") {
-        set bereq.first_byte_timeout = 60s;
+    # Give more time for slow API responses
+    if (req.url ~ "^/api/search") {
+        set bereq.first_byte_timeout = 30s;
     }
     
-    # Use a different backend for certain paths
-    if (req.url ~ "^/legacy/") {
-        set bereq.backend = F_legacy_backend;
-    }
-    
-    # Add custom headers to backend request
+    # Add a request ID for tracking
     set bereq.http.X-Request-ID = digest.hash_sha256(now + req.url);
-    
-    return(fetch);
 }
 ```
 
-### vcl_pass
+### 4. Retrieval (vcl_fetch)
 
-**Purpose**: Executed when cache lookup is bypassed.
+**What it does**: Processes the response from the origin server.
 
-**Common Tasks**:
-- Setting backend-specific parameters
-- Modifying the backend request
+**Example**: Fastly got the product page from your website's server and now it can:
+- Decide how long to keep it in cache
+- Compress it to make it smaller
+- Check if it's an error page
+- Add special headers
 
-**Possible Return Values**:
-- `pass`: Proceed with pass mode (default)
-- `error`: Jump to `vcl_error` with a specified status code
-
-**Example**:
-```vcl
-sub vcl_pass {
-    # Set custom timeout for pass requests
-    set bereq.first_byte_timeout = 15s;
-    
-    # Add custom headers to backend request
-    set bereq.http.X-Cache-Mode = "pass";
-    set bereq.http.X-Forwarded-For = client.ip;
-    
-    return(pass);
-}
-```
-
-### vcl_fetch (also known as vcl_backend_response)
-
-**Purpose**: Executed after receiving a response from the backend.
-
-**Common Tasks**:
-- Setting cache TTL
-- Response header manipulation
-- Content modification
-- Error handling
-- Deciding whether to cache the response
-
-**Possible Return Values**:
-- `deliver`: Cache the object and deliver it (default)
-- `pass`: Do not cache the object
-- `error`: Jump to `vcl_error` with a specified status code
-- `restart`: Restart the request processing
-- `hit_for_pass`: Do not cache this response, and pass subsequent requests for this object
-- `deliver_stale`: Deliver stale content if available
-
-**Example**:
 ```vcl
 sub vcl_fetch {
-    # Set different cache TTLs based on content type
-    if (beresp.http.Content-Type ~ "text/html") {
-        set beresp.ttl = 1h;
-    } else if (beresp.http.Content-Type ~ "image/") {
-        set beresp.ttl = 7d;
-    } else if (beresp.http.Content-Type ~ "application/javascript") {
-        set beresp.ttl = 24h;
-    } else {
-        set beresp.ttl = 4h;
+    # Cache images longer than HTML pages
+    if (beresp.http.Content-Type ~ "image/") {
+        set beresp.ttl = 7d;  # 7 days
+    } else if (beresp.http.Content-Type ~ "text/html") {
+        set beresp.ttl = 1h;  # 1 hour
     }
     
-    # Don't cache error responses
+    # Don't cache error pages
     if (beresp.status >= 500) {
         return(pass);
     }
     
-    # Enable gzip compression for text-based content
+    # Compress text content to save bandwidth
     if (beresp.http.Content-Type ~ "text/" || 
-        beresp.http.Content-Type ~ "application/json" || 
-        beresp.http.Content-Type ~ "application/javascript") {
+        beresp.http.Content-Type ~ "application/json") {
         set beresp.gzip = true;
     }
-    
-    # Set a longer grace period for API responses
-    if (bereq.url ~ "^/api/") {
-        set beresp.grace = 24h;
-    }
-    
-    return(deliver);
 }
 ```
 
-### vcl_error
+### 5. Packaging (vcl_deliver)
 
-**Purpose**: Executed when an error occurs or when explicitly called with `error`.
+**What it does**: Prepares the final response before sending it to the user.
 
-**Common Tasks**:
-- Custom error page generation
-- Error logging
-- Conditional error handling
+**Example**: Before sending the product page to the browser, Fastly can:
+- Add security headers
+- Remove internal headers
+- Add debugging information
+- Set cookies
 
-**Possible Return Values**:
-- `deliver`: Deliver the error response (default)
-- `restart`: Restart the request processing
-- `deliver_stale`: Deliver stale content if available
-
-**Example**:
-```vcl
-sub vcl_error {
-    # Custom 404 page
-    if (obj.status == 404) {
-        set obj.http.Content-Type = "text/html; charset=utf-8";
-        set obj.response = "Not Found";
-        synthetic {"
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Page Not Found</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 50px; }
-        h1 { color: #333; }
-    </style>
-</head>
-<body>
-    <h1>Page Not Found</h1>
-    <p>The page you requested could not be found. Please check the URL and try again.</p>
-    <p><a href="/">Return to homepage</a></p>
-</body>
-</html>
-        "};
-        return(deliver);
-    }
-    
-    # Custom maintenance page for 503 errors
-    if (obj.status == 503) {
-        set obj.http.Content-Type = "text/html; charset=utf-8";
-        set obj.response = "Service Unavailable";
-        set obj.http.Retry-After = "300";
-        synthetic {"
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Temporarily Unavailable</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 50px; }
-        h1 { color: #c00; }
-    </style>
-</head>
-<body>
-    <h1>Temporarily Unavailable</h1>
-    <p>We're sorry, but our service is currently undergoing maintenance.</p>
-    <p>Please try again in a few minutes.</p>
-</body>
-</html>
-        "};
-        return(deliver);
-    }
-}
-```
-
-### vcl_deliver
-
-**Purpose**: Executed before delivering the response to the client.
-
-**Common Tasks**:
-- Response header manipulation
-- Adding debug information
-- Setting cookies
-- Response body modification
-
-**Possible Return Values**:
-- `deliver`: Deliver the response to the client (default)
-- `restart`: Restart the request processing
-
-**Example**:
 ```vcl
 sub vcl_deliver {
-    # Add cache status header
+    # Add cache status for debugging
     if (obj.hits > 0) {
         set resp.http.X-Cache = "HIT";
-        set resp.http.X-Cache-Hits = obj.hits;
     } else {
         set resp.http.X-Cache = "MISS";
     }
     
+    # Add security headers
+    set resp.http.X-Content-Type-Options = "nosniff";
+    set resp.http.X-Frame-Options = "DENY";
+    
     # Remove internal headers
     unset resp.http.X-Varnish;
     unset resp.http.Via;
-    unset resp.http.X-Served-By;
-    unset resp.http.X-Cache-Hits;
-    unset resp.http.X-Timer;
-    
-    # Add security headers
-    set resp.http.Strict-Transport-Security = "max-age=31536000; includeSubDomains";
-    set resp.http.X-Content-Type-Options = "nosniff";
-    set resp.http.X-Frame-Options = "DENY";
-    set resp.http.X-XSS-Protection = "1; mode=block";
-    
-    # Add debug headers in development environment
-    if (req.http.Host ~ "dev\.example\.com") {
-        set resp.http.X-Debug-URL = req.url;
-        set resp.http.X-Debug-TTL = obj.ttl;
-        set resp.http.X-Debug-Grace = obj.grace;
-    }
-    
-    return(deliver);
 }
 ```
 
-### vcl_log
+### 6. Record Keeping (vcl_log)
 
-**Purpose**: Executed after the response has been delivered to the client.
+**What it does**: Records information about the request after it's been handled.
 
-**Common Tasks**:
-- Logging
-- Analytics
-- Post-processing
+**Example**: After sending the product page, Fastly can log:
+- Which page was requested
+- Whether it was a cache hit or miss
+- How long it took
+- Any errors that occurred
 
-**Possible Return Values**:
-- `deliver`: Complete the request (default)
-
-**Example**:
 ```vcl
 sub vcl_log {
-    # Log detailed information about the request
-    log {"syslog "} req.service_id {" request_info :: "} 
-        {"client_ip="} client.ip {" "}
-        {"request_method="} req.method {" "}
+    # Log basic request information
+    log {"syslog "} req.service_id {" request :: "} 
         {"url="} req.url {" "}
-        {"protocol="} req.proto {" "}
         {"status="} resp.status {" "}
-        {"cache_status="} fastly_info.state {" "}
-        {"ttl="} obj.ttl {" "}
-        {"server="} server.identity;
-    
-    return(deliver);
+        {"cache="} fastly_info.state;
 }
 ```
 
-## Request Flow Examples
+## Common Request Journeys
 
-### Cache Hit Flow
+### Journey 1: Fast Path (Cache Hit)
 
-1. Client sends request
-2. `vcl_recv` processes the request
-3. `vcl_hash` determines the cache key
-4. Object is found in cache, so `vcl_hit` is executed
-5. `vcl_deliver` prepares the response
-6. `vcl_log` logs the request
-7. Response is sent to the client
+When Fastly already has what you're looking for:
 
-### Cache Miss Flow
+1. Request arrives at Reception (`vcl_recv`)
+2. Filing System creates a label (`vcl_hash`)
+3. Content is found in cache (`vcl_hit`)
+4. Response is packaged (`vcl_deliver`)
+5. Request is logged (`vcl_log`)
+6. Response is sent to your browser
 
-1. Client sends request
-2. `vcl_recv` processes the request
-3. `vcl_hash` determines the cache key
-4. Object is not found in cache, so `vcl_miss` is executed
-5. Request is sent to the backend
-6. Backend responds, and `vcl_fetch` processes the response
-7. `vcl_deliver` prepares the response
-8. `vcl_log` logs the request
-9. Response is sent to the client and stored in cache
+This is the fastest path because Fastly doesn't need to contact the origin server.
 
-### Pass Flow
+### Journey 2: Fetch Path (Cache Miss)
 
-1. Client sends request
-2. `vcl_recv` processes the request and returns `pass`
-3. `vcl_pass` is executed
-4. Request is sent to the backend
-5. Backend responds, and `vcl_fetch` processes the response
-6. `vcl_deliver` prepares the response
-7. `vcl_log` logs the request
-8. Response is sent to the client but not stored in cache
+When Fastly needs to get fresh content:
 
-## Best Practices
+1. Request arrives at Reception (`vcl_recv`)
+2. Filing System creates a label (`vcl_hash`)
+3. Content is not found in cache (`vcl_miss`)
+4. Fastly asks the origin server for the content
+5. Origin responds, and Fastly processes it (`vcl_fetch`)
+6. Response is packaged (`vcl_deliver`)
+7. Request is logged (`vcl_log`)
+8. Response is sent to your browser and stored in cache
 
-1. **Be Mindful of Return Values**: The return value from each subroutine determines the flow of the request. Make sure you understand the implications of each return value.
+This takes a bit longer but happens only the first time content is requested.
 
-2. **Use Conditional Logic**: Use conditions to apply different logic based on request attributes, such as URL, headers, or cookies.
+### Journey 3: Bypass Path (Pass)
 
-3. **Keep Performance in Mind**: VCL code is executed for every request, so keep your code efficient and avoid unnecessary operations.
+When Fastly needs to skip the cache:
 
-4. **Test Thoroughly**: Test your VCL code in a staging environment before deploying to production, as errors can affect all requests.
+1. Request arrives at Reception (`vcl_recv`) and is marked as "pass"
+2. Fastly prepares to contact the origin (`vcl_pass`)
+3. Fastly asks the origin server for the content
+4. Origin responds, and Fastly processes it (`vcl_fetch`)
+5. Response is packaged (`vcl_deliver`)
+6. Request is logged (`vcl_log`)
+7. Response is sent to your browser but not stored in cache
 
-5. **Use Comments**: Document your VCL code with comments to explain the purpose of each section, especially for complex logic.
+This is used for personalized or dynamic content that shouldn't be cached.
 
-6. **Leverage Fastly's Debugging Tools**: Use Fastly's debugging headers and logging to troubleshoot issues with your VCL code.
+## Tips for Success
 
-7. **Consider Edge Cases**: Think about how your VCL code will handle edge cases, such as malformed requests or backend failures.
+1. **Start Simple**: Begin with basic modifications and test thoroughly before adding complexity.
 
-In the next section, we'll explore VCL syntax and basic constructs in more detail.
+2. **Think About the Journey**: Always consider which path a request will take through the pipeline.
+
+3. **Use Clear Conditions**: Make your if-statements clear and specific to avoid unexpected behavior.
+
+4. **Test in Staging**: Always test your changes in a non-production environment first.
+
+5. **Add Comments**: Explain what your code does and why, so others (and future you) can understand.
+
+6. **Watch for Performance**: Keep your VCL code efficient since it runs on every request.
+
+7. **Plan for Errors**: Consider what happens if the origin server is down or responds with errors.
+
+## Next Steps
+
+Now that you understand how requests flow through Fastly, you're ready to learn more about:
+
+- VCL syntax and data types
+- Backend configuration
+- Caching strategies
+- Real-world examples
+
+Each of these topics is covered in detail in the following sections of this guide.
