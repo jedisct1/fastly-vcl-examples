@@ -162,15 +162,16 @@ sub vcl_recv {
 
 /**
  * FUNCTION: accept.media_lookup
- * 
+ *
  * PURPOSE: Selects the best match from an Accept header value against available media types
- * SYNTAX: accept.media_lookup(STRING available_media_types, STRING default_media_type, STRING accept_header)
- * 
+ * SYNTAX: accept.media_lookup(STRING available_media_types, STRING default_media_type, STRING media_type_patterns, STRING accept_header)
+ *
  * PARAMETERS:
  *   - available_media_types: Colon-separated list of media types available for the resource
  *   - default_media_type: Fallback media type if no match is found
+ *   - media_type_patterns: Colon-separated list of media types, each corresponding to a media type pattern
  *   - accept_header: The Accept header value to parse
- * 
+ *
  * RETURN VALUE: The best matching media type from the available list, or the default if no match
  */
 
@@ -180,6 +181,7 @@ sub vcl_recv {
   set var.selected_media_type = accept.media_lookup(
     "application/json:application/xml:text/html:text/plain", # Available media types
     "application/json",                                      # Default media type
+    "application/json:application/xml:text/html:text/plain", # Media type patterns
     req.http.Accept
   );
   
@@ -194,6 +196,7 @@ sub vcl_recv {
     set var.selected_media_type = accept.media_lookup(
       var.api_media_types,
       "application/json", # Default to latest version
+      var.api_media_types, # Media type patterns
       req.http.Accept
     );
     
@@ -243,6 +246,7 @@ sub vcl_recv {
   set var.format = accept.media_lookup(
     "application/json:application/xml:text/html",
     "text/html",
+    "application/json:application/xml:text/html", # Media type patterns
     req.http.Accept
   );
   
