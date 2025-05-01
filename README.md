@@ -11,9 +11,11 @@ This guide provides detailed documentation on how to write a Fastly VCL service,
 5. [Caching Strategies](./05-caching-strategies.md)
 6. [Real-World Examples](./06-real-world-examples.md)
 
-## Function Reference
+## 📚 Complete VCL Function Reference
 
-For a comprehensive reference of all Fastly VCL functions, please see the [vcl-functions](../vcl-functions) directory. This directory contains detailed documentation for every function available in Fastly VCL, including parameters, return values, and usage examples.
+> For a comprehensive reference of **ALL Fastly VCL functions**, see the [**vcl-functions**](vcl-functions) directory. This essential reference contains detailed documentation for every function available in Fastly VCL, including parameters, return values, and usage examples.
+
+The function reference is a critical companion to this guide and should be consulted frequently when developing VCL code.
 
 ## What is Fastly VCL?
 
