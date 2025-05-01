@@ -13,7 +13,7 @@ This guide provides detailed documentation on how to write a Fastly VCL service,
 
 ## Function Reference
 
-For a comprehensive reference of all Fastly VCL functions, please see the [vcl-functions](../vcl-functions) directory. This directory contains detailed documentation for every function available in Fastly VCL, including parameters, return values, and usage examples.
+For a comprehensive reference of all Fastly VCL functions, please see the [vcl-functions](vcl-functions) directory. This directory contains detailed documentation for every function available in Fastly VCL, including parameters, return values, and usage examples.
 
 ## What is Fastly VCL?
 
