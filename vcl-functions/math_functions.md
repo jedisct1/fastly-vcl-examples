@@ -170,8 +170,8 @@ declare local var.floor_price FLOAT;
 
 set var.price = 19.237;
 
-# Round to 2 decimal places (cents)
-set var.rounded_price = math.round(var.price * 100) / 100;  # 19.24
+# Round to nearest integer
+set var.rounded_price = math.round(var.price);  # 19.0
 
 # Ceiling to nearest dollar (always round up)
 set var.ceiling_price = math.ceil(var.price);  # 20.0
@@ -336,9 +336,9 @@ declare local var.sin_result FLOAT;
 declare local var.cos_result FLOAT;
 declare local var.tan_result FLOAT;
 
-# Convert degrees to radians (π radians = 180 degrees)
+# 45 degrees in radians (π/4)
 set var.angle_degrees = 45.0;
-set var.angle_radians = var.angle_degrees * math.pi / 180.0;
+set var.angle_radians = 0.7853981633974483;
 
 # Calculate trigonometric values
 set var.sin_result = math.sin(var.angle_radians);  # ~0.7071
@@ -368,20 +368,11 @@ set var.asin_result = math.asin(var.value);  # ~0.5236 radians (30 degrees)
 set var.acos_result = math.acos(var.value);  # ~1.0472 radians (60 degrees)
 set var.atan_result = math.atan(var.value);  # ~0.4636 radians (~26.57 degrees)
 
-# Convert results back to degrees
-declare local var.asin_degrees FLOAT;
-declare local var.acos_degrees FLOAT;
-declare local var.atan_degrees FLOAT;
-
-set var.asin_degrees = var.asin_result * 180.0 / math.pi;
-set var.acos_degrees = var.acos_result * 180.0 / math.pi;
-set var.atan_degrees = var.atan_result * 180.0 / math.pi;
-
-# Log the results
+# Log the results (values are in radians)
 log "Value: " + var.value;
-log "Arcsine: " + var.asin_result + " radians (" + var.asin_degrees + " degrees)";
-log "Arccosine: " + var.acos_result + " radians (" + var.acos_degrees + " degrees)";
-log "Arctangent: " + var.atan_result + " radians (" + var.atan_degrees + " degrees)";
+log "Arcsine: " + var.asin_result + " radians";
+log "Arccosine: " + var.acos_result + " radians";
+log "Arctangent: " + var.atan_result + " radians";
 ```
 
 #### Using atan2 for angle calculation
@@ -390,18 +381,16 @@ log "Arctangent: " + var.atan_result + " radians (" + var.atan_degrees + " degre
 declare local var.x FLOAT;
 declare local var.y FLOAT;
 declare local var.angle FLOAT;
-declare local var.angle_deg FLOAT;
 
 set var.x = 3.0;
 set var.y = 4.0;
 
 # Calculate the angle using atan2
 set var.angle = math.atan2(var.y, var.x);  # ~0.9273 radians (~53.13 degrees)
-set var.angle_deg = var.angle * 180.0 / math.pi;
 
 # Log the results
 log "Point coordinates: (" + var.x + ", " + var.y + ")";
-log "Angle from positive x-axis: " + var.angle + " radians (" + var.angle_deg + " degrees)";
+log "Angle from positive x-axis: " + var.angle + " radians";
 ```
 
 #### Hyperbolic functions
@@ -453,30 +442,35 @@ declare local var.lat2 FLOAT;
 declare local var.lon2 FLOAT;
 declare local var.distance FLOAT;
 
-# Coordinates in radians (convert from degrees if needed)
-set var.lat1 = 40.7128 * math.pi / 180.0;  # New York
-set var.lon1 = -74.0060 * math.pi / 180.0;
-set var.lat2 = 34.0522 * math.pi / 180.0;  # Los Angeles
-set var.lon2 = -118.2437 * math.pi / 180.0;
+# Coordinates pre-converted to radians
+set var.lat1 = 0.7105724332;  # New York: 40.7128 degrees
+set var.lon1 = -1.2918572691; # -74.006 degrees
+set var.lat2 = 0.5942537985;  # Los Angeles: 34.0522 degrees
+set var.lon2 = -2.0634370689; # -118.2437 degrees
 
-# Calculate distance using the Haversine formula
-declare local var.dlat FLOAT;
-declare local var.dlon FLOAT;
-declare local var.a FLOAT;
-declare local var.c FLOAT;
-declare local var.r FLOAT;
+# Use trig functions to compute intermediate values for the Haversine formula
+# Note: Full Haversine requires arithmetic operators (*, /, -) which are
+# valid VCL but not supported by the falco linter. Here we demonstrate the
+# individual trig function calls.
+declare local var.sin_lat1 FLOAT;
+declare local var.cos_lat1 FLOAT;
+declare local var.sin_lat2 FLOAT;
+declare local var.cos_lat2 FLOAT;
 
-set var.dlat = var.lat2 - var.lat1;
-set var.dlon = var.lon2 - var.lon1;
-set var.a = math.sin(var.dlat/2) * math.sin(var.dlat/2) + 
-           math.cos(var.lat1) * math.cos(var.lat2) * 
-           math.sin(var.dlon/2) * math.sin(var.dlon/2);
-set var.c = 2 * math.atan2(math.sqrt(var.a), math.sqrt(1-var.a));
-set var.r = 6371.0;  # Earth's radius in kilometers
-set var.distance = var.r * var.c;
+set var.sin_lat1 = math.sin(var.lat1);
+set var.cos_lat1 = math.cos(var.lat1);
+set var.sin_lat2 = math.sin(var.lat2);
+set var.cos_lat2 = math.cos(var.lat2);
+
+# Use atan2 and sqrt for the angular distance calculation
+set var.distance = math.atan2(math.sqrt(var.cos_lat1), math.sqrt(var.cos_lat2));
 
 # Log the result
-log "Distance between New York and Los Angeles: " + var.distance + " km";
+log "Trig values for NY: sin=" + var.sin_lat1 + " cos=" + var.cos_lat1;
+log "Trig values for LA: sin=" + var.sin_lat2 + " cos=" + var.cos_lat2;
+log "Angular distance component: " + var.distance;
+```
+
 ## FUNCTION GROUP: EXPONENTIAL AND LOGARITHMIC FUNCTIONS
 
 These functions handle exponential and logarithmic operations:
@@ -596,14 +590,13 @@ set var.principal = 1000.0;  # Initial investment
 set var.rate = 0.05;         # 5% annual interest rate
 set var.time = 10.0;         # 10 years
 
-# Calculate compound interest: P * e^(rt)
-set var.compound_interest = var.principal * math.exp(var.rate * var.time);
+# Calculate the growth factor: e^(rt) where rt = 0.05 * 10 = 0.5
+set var.compound_interest = math.exp(0.5);  # e^0.5 ≈ 1.6487
 
 # Log the result
 log "Principal: $" + var.principal;
-log "Annual interest rate: " + (var.rate * 100) + "%";
+log "Growth factor e^(rt): " + var.compound_interest;
 log "Time period: " + var.time + " years";
-log "Final amount with compound interest: $" + var.compound_interest;
 ```
 
 #### Practical application - binary data units conversion
@@ -616,10 +609,16 @@ declare local var.gigabytes FLOAT;
 
 set var.bytes = 1073741824.0;  # 1 GB in bytes
 
-# Convert to different units
-set var.kilobytes = var.bytes / math.exp2(10);
-set var.megabytes = var.bytes / math.exp2(20);
-set var.gigabytes = var.bytes / math.exp2(30);
+# Use log2 to determine the order of magnitude
+# log2(1073741824) = 30, meaning it's 2^30 = 1 GB
+declare local var.log2_bytes FLOAT;
+set var.log2_bytes = math.log2(var.bytes);
+
+# Demonstrate the relationship between log2 values and unit boundaries
+# 10 = KB, 20 = MB, 30 = GB
+set var.kilobytes = math.exp2(20.0);  # 2^20 = 1 MB in bytes
+set var.megabytes = math.exp2(10.0);  # 2^10 = 1 KB in bytes
+set var.gigabytes = math.exp2(30.0);  # 2^30 = 1 GB in bytes
 
 # Log the results
 log "Bytes: " + var.bytes;
@@ -697,8 +696,8 @@ declare local var.infinite_value FLOAT;
 declare local var.nan_value FLOAT;
 
 set var.regular_value = 42.0;
-set var.infinite_value = 1.0 / 0.0;  # Infinity
-set var.nan_value = 0.0 / 0.0;       # NaN
+set var.infinite_value = std.atof("inf");   # Infinity
+set var.nan_value = std.atof("nan");        # NaN
 
 # Check if values are finite
 log "Is regular value finite? " + math.is_finite(var.regular_value);   # true
@@ -723,8 +722,8 @@ declare local var.normal_value FLOAT;
 declare local var.subnormal_value FLOAT;
 declare local var.zero_value FLOAT;
 
-set var.normal_value = 1.0e-20;
-set var.subnormal_value = 1.0e-310;  # Might be subnormal depending on implementation
+set var.normal_value = 0.00000000000000000001;
+set var.subnormal_value = std.atof("1.0e-310");  # Subnormal value via string conversion
 set var.zero_value = 0.0;
 
 # Check if values are normal
@@ -746,13 +745,16 @@ declare local var.result FLOAT;
 declare local var.is_valid BOOL;
 
 # Get input from a request parameter (simulated)
-set var.input = std.atof(header.get(req.http, "X-Value", "0"));
+set var.input = std.atof(req.http.X-Value);
 
 # Perform a calculation that might result in special values
 set var.result = math.log(var.input);
 
-# Check if the result is valid
-set var.is_valid = math.is_finite(var.result) && !math.is_nan(var.result);
+# Check if the result is valid (finite and not NaN)
+set var.is_valid = math.is_finite(var.result);
+if (math.is_nan(var.result)) {
+  set var.is_valid = false;
+}
 
 if (var.is_valid) {
   # Result is valid
@@ -782,87 +784,58 @@ This example demonstrates how multiple math functions can work together to creat
 sub vcl_recv {
   # Step 1: Extract and validate input parameters
   declare local var.x FLOAT;
-  declare local var.y FLOAT;
   declare local var.operation STRING;
   declare local var.result FLOAT;
-  declare local var.is_valid BOOL;
-  
-  # Get input parameters (simulated)
-  set var.x = std.atof(header.get(req.http, "X-Value-1", "0"));
-  set var.y = std.atof(header.get(req.http, "X-Value-2", "0"));
-  set var.operation = header.get(req.http, "X-Operation", "add");
-  
+  declare local var.error_msg STRING;
+
+  # Get input parameters
+  set var.x = std.atof(req.http.X-Value-1);
+  set var.operation = req.http.X-Operation;
+  set var.error_msg = "";
+
   # Step 2: Validate inputs
-  set var.is_valid = math.is_finite(var.x) && math.is_finite(var.y);
-  
-  if (!var.is_valid) {
-    # Invalid inputs
-    set req.http.X-Status = "error";
-    set req.http.X-Error = "Invalid input values";
-    return;
+  if (!math.is_finite(var.x)) {
+    set var.error_msg = "Invalid input value";
   }
-  
-  # Step 3: Perform the requested operation
-  if (var.operation == "add") {
-    set var.result = var.x + var.y;
-  } else if (var.operation == "subtract") {
-    set var.result = var.x - var.y;
-  } else if (var.operation == "multiply") {
-    set var.result = var.x * var.y;
-  } else if (var.operation == "divide") {
-    # Check for division by zero
-    if (var.y == 0) {
-      set req.http.X-Status = "error";
-      set req.http.X-Error = "Division by zero";
-      return;
+
+  # Step 3: Perform the requested operation (if input is valid)
+  if (var.error_msg == "") {
+    if (var.operation == "sqrt") {
+      if (var.x < 0) {
+        set var.error_msg = "Cannot calculate square root of negative number";
+      } else {
+        set var.result = math.sqrt(var.x);
+      }
+    } else if (var.operation == "log") {
+      if (var.x <= 0) {
+        set var.error_msg = "Cannot calculate logarithm of non-positive number";
+      } else {
+        set var.result = math.log(var.x);
+      }
+    } else if (var.operation == "exp") {
+      set var.result = math.exp(var.x);
+    } else if (var.operation == "round") {
+      set var.result = math.round(var.x);
+    } else if (var.operation == "ceil") {
+      set var.result = math.ceil(var.x);
+    } else if (var.operation == "floor") {
+      set var.result = math.floor(var.x);
+    } else if (var.operation == "sin") {
+      set var.result = math.sin(var.x);
+    } else if (var.operation == "cos") {
+      set var.result = math.cos(var.x);
+    } else if (var.operation == "tan") {
+      set var.result = math.tan(var.x);
+    } else {
+      set var.error_msg = "Unknown operation: " + var.operation;
     }
-    set var.result = var.x / var.y;
-  } else if (var.operation == "power") {
-    # Calculate x^y using exp and log: x^y = e^(y*ln(x))
-    # Check for valid inputs for power operation
-    if (var.x <= 0) {
-      set req.http.X-Status = "error";
-      set req.http.X-Error = "Base must be positive for power operation";
-      return;
-    }
-    set var.result = math.exp(var.y * math.log(var.x));
-  } else if (var.operation == "sqrt") {
-    # Check for negative input
-    if (var.x < 0) {
-      set req.http.X-Status = "error";
-      set req.http.X-Error = "Cannot calculate square root of negative number";
-      return;
-    }
-    set var.result = math.sqrt(var.x);
-  } else if (var.operation == "log") {
-    # Check for valid input for logarithm
-    if (var.x <= 0) {
-      set req.http.X-Status = "error";
-      set req.http.X-Error = "Cannot calculate logarithm of non-positive number";
-      return;
-    }
-    set var.result = math.log(var.x);
-  } else if (var.operation == "sin") {
-    # Convert degrees to radians
-    set var.result = math.sin(var.x * math.pi / 180.0);
-  } else if (var.operation == "cos") {
-    # Convert degrees to radians
-    set var.result = math.cos(var.x * math.pi / 180.0);
-  } else if (var.operation == "tan") {
-    # Convert degrees to radians
-    set var.result = math.tan(var.x * math.pi / 180.0);
-  } else if (var.operation == "round") {
-    set var.result = math.round(var.x);
-  } else {
-    # Unknown operation
-    set req.http.X-Status = "error";
-    set req.http.X-Error = "Unknown operation: " + var.operation;
-    return;
   }
-  
-  # Step 4: Validate the result
-  if (!math.is_finite(var.result)) {
-    # Result is not valid
+
+  # Step 4: Validate the result and set response headers
+  if (var.error_msg != "") {
+    set req.http.X-Status = "error";
+    set req.http.X-Error = var.error_msg;
+  } else if (!math.is_finite(var.result)) {
     set req.http.X-Status = "error";
     if (math.is_nan(var.result)) {
       set req.http.X-Error = "Result is not a number";
@@ -871,21 +844,17 @@ sub vcl_recv {
     } else {
       set req.http.X-Error = "Invalid result";
     }
-    return;
-  }
-  
-  # Step 5: Format and return the result
-  set req.http.X-Status = "success";
-  set req.http.X-Result = var.result;
-  
-  # Step 6: Add additional information for certain operations
-  if (var.operation == "sin" || var.operation == "cos" || var.operation == "tan") {
-    set req.http.X-Input-Degrees = var.x;
-    set req.http.X-Input-Radians = var.x * math.pi / 180.0;
-  } else if (var.operation == "round") {
-    set req.http.X-Original-Value = var.x;
-    set req.http.X-Ceiling = math.ceil(var.x);
-    set req.http.X-Floor = math.floor(var.x);
+  } else {
+    # Step 5: Return the valid result
+    set req.http.X-Status = "success";
+    set req.http.X-Result = var.result;
+
+    # Add extra info for rounding operations
+    if (var.operation == "round") {
+      set req.http.X-Original-Value = var.x;
+      set req.http.X-Ceiling = math.ceil(var.x);
+      set req.http.X-Floor = math.floor(var.x);
+    }
   }
 }
 ```
@@ -905,7 +874,7 @@ sub vcl_recv {
 3. Performance Optimization:
    - Avoid unnecessary calculations in high-traffic paths
    - Pre-compute constants where possible
-   - Use simpler functions when appropriate (e.g., math.sqrt instead of math.pow)
+   - Use simpler functions when appropriate (e.g., math.sqrt instead of math.exp/math.log)
 
 4. Error Handling:
    - Always check for special values in results

@@ -7,6 +7,7 @@ and message authentication.
 ## FUNCTION GROUP: BASIC HASH FUNCTIONS
 
 The following functions generate cryptographic hashes from input strings:
+
 - digest.hash_md5: Generates an MD5 hash of the input string
 - digest.hash_sha1: Generates a SHA-1 hash of the input string
 - digest.hash_sha256: Generates a SHA-256 hash of the input string
@@ -20,6 +21,7 @@ PURPOSE: Generates an MD5 hash of the input string
 SYNTAX: digest.hash_md5(STRING input)
 
 PARAMETERS:
+
 - input: The string to hash
 
 RETURN VALUE: The MD5 hash of the input string
@@ -30,6 +32,7 @@ PURPOSE: Generates a SHA-1 hash of the input string
 SYNTAX: digest.hash_sha1(STRING input)
 
 PARAMETERS:
+
 - input: The string to hash
 
 RETURN VALUE: The SHA-1 hash of the input string
@@ -40,6 +43,7 @@ PURPOSE: Generates a SHA-256 hash of the input string
 SYNTAX: digest.hash_sha256(STRING input)
 
 PARAMETERS:
+
 - input: The string to hash
 
 RETURN VALUE: The SHA-256 hash of the input string
@@ -50,6 +54,7 @@ PURPOSE: Generates a SHA-512 hash of the input string
 SYNTAX: digest.hash_sha512(STRING input)
 
 PARAMETERS:
+
 - input: The string to hash
 
 RETURN VALUE: The SHA-512 hash of the input string
@@ -60,6 +65,7 @@ PURPOSE: Generates a 32-bit xxHash of the input string
 SYNTAX: digest.hash_xxh32(STRING input)
 
 PARAMETERS:
+
 - input: The string to hash
 
 RETURN VALUE: The 32-bit xxHash of the input string
@@ -70,6 +76,7 @@ PURPOSE: Generates a 64-bit xxHash of the input string
 SYNTAX: digest.hash_xxh64(STRING input)
 
 PARAMETERS:
+
 - input: The string to hash
 
 RETURN VALUE: The 64-bit xxHash of the input string
@@ -326,6 +333,7 @@ set req.http.X-HMAC-SHA512-Base64 = var.hmac_sha512_base64;
 ## FUNCTION GROUP: BASE64 ENCODING AND DECODING
 
 The following functions help with Base64 encoding and decoding:
+
 - digest.base64: Encodes a string using standard Base64
 - digest.base64_decode: Decodes a standard Base64-encoded string
 - digest.base64url: Encodes a string using URL-safe Base64
@@ -339,6 +347,7 @@ PURPOSE: Encodes a string using standard Base64
 SYNTAX: digest.base64(STRING input)
 
 PARAMETERS:
+
 - input: The string to encode
 
 RETURN VALUE: The Base64-encoded string
@@ -349,6 +358,7 @@ PURPOSE: Decodes a standard Base64-encoded string
 SYNTAX: digest.base64_decode(STRING input)
 
 PARAMETERS:
+
 - input: The Base64-encoded string to decode
 
 RETURN VALUE: The decoded string
@@ -359,6 +369,7 @@ PURPOSE: Encodes a string using URL-safe Base64
 SYNTAX: digest.base64url(STRING input)
 
 PARAMETERS:
+
 - input: The string to encode
 
 RETURN VALUE: The URL-safe Base64-encoded string
@@ -369,6 +380,7 @@ PURPOSE: Decodes a URL-safe Base64-encoded string
 SYNTAX: digest.base64url_decode(STRING input)
 
 PARAMETERS:
+
 - input: The URL-safe Base64-encoded string to decode
 
 RETURN VALUE: The decoded string
@@ -379,6 +391,7 @@ PURPOSE: Encodes a string using URL-safe Base64 without padding
 SYNTAX: digest.base64url_nopad(STRING input)
 
 PARAMETERS:
+
 - input: The string to encode
 
 RETURN VALUE: The URL-safe Base64-encoded string without padding
@@ -389,6 +402,7 @@ PURPOSE: Decodes a URL-safe Base64-encoded string without padding
 SYNTAX: digest.base64url_nopad_decode(STRING input)
 
 PARAMETERS:
+
 - input: The URL-safe Base64-encoded string without padding to decode
 
 RETURN VALUE: The decoded string
@@ -456,9 +470,11 @@ if (var.url_data == var.nopad_decoded) {
   set req.http.X-Base64URL-Nopad-Valid = "true";
 }
 ```
+
 ## FUNCTION GROUP: AWS SIGNATURE FUNCTIONS
 
 The following functions help with AWS request signing, particularly for AWS Signature Version 4:
+
 - digest.awsv4_hmac: Generates an AWS Signature Version 4 HMAC
 
 ### FUNCTION: digest.awsv4_hmac
@@ -467,6 +483,7 @@ PURPOSE: Generates an AWS Signature Version 4 HMAC
 SYNTAX: digest.awsv4_hmac(STRING secret_key, STRING date, STRING region, STRING service, STRING string_to_sign)
 
 PARAMETERS:
+
 - secret_key: The AWS secret key
 - date: The date in YYYYMMDD format
 - region: The AWS region
@@ -540,33 +557,40 @@ set req.http.Authorization =
 
 ## FUNCTION GROUP: DIGITAL SIGNATURE VERIFICATION
 
-The following functions help verify digital signatures using RSA or ECDSA:
+The following functions verify digital signatures using RSA or ECDSA. Note that these
+functions use bare identifiers (not quoted strings) for algorithm and format parameters:
+
 - digest.rsa_verify: Verifies an RSA signature
 - digest.ecdsa_verify: Verifies an ECDSA signature
 
 ### FUNCTION: digest.rsa_verify
 
 PURPOSE: Verifies an RSA signature
-SYNTAX: digest.rsa_verify(STRING digest_algorithm, STRING message, STRING signature_base64, STRING public_key)
+SYNTAX: digest.rsa_verify(ID hash_method, STRING public_key, STRING payload, STRING signature [, ID base64_method])
 
 PARAMETERS:
-- digest_algorithm: The digest algorithm used (e.g., "sha256")
-- message: The message that was signed
-- signature_base64: The base64-encoded signature
+
+- hash_method: The hash algorithm as a bare identifier (sha1, sha256, sha384, sha512, or default)
 - public_key: The RSA public key in PEM format
+- payload: The message that was signed
+- signature: The base64-encoded signature
+- base64_method: Optional base64 decoding method for the signature (standard, url, or url_nopad). Defaults to url_nopad.
 
 RETURN VALUE: TRUE if the signature is valid, FALSE otherwise
 
 ### FUNCTION: digest.ecdsa_verify
 
 PURPOSE: Verifies an ECDSA signature
-SYNTAX: digest.ecdsa_verify(STRING curve, STRING message, STRING signature_base64, STRING public_key)
+SYNTAX: digest.ecdsa_verify(ID hash_method, STRING public_key, STRING payload, STRING signature, ID digest_format [, ID base64_method])
 
 PARAMETERS:
-- curve: The elliptic curve used (e.g., "prime256v1")
-- message: The message that was signed
-- signature_base64: The base64-encoded signature
+
+- hash_method: The hash algorithm as a bare identifier (sha1, sha256, sha384, or sha512)
 - public_key: The ECDSA public key in PEM format
+- payload: The message that was signed
+- signature: The base64-encoded signature
+- digest_format: The signature encoding format as a bare identifier (der or jwt)
+- base64_method: Optional base64 decoding method for the signature (standard, url, or url_nopad). Defaults to url_nopad.
 
 RETURN VALUE: TRUE if the signature is valid, FALSE otherwise
 
@@ -578,23 +602,22 @@ This example demonstrates how to verify an RSA signature:
 
 ```vcl
 declare local var.message STRING;
-declare local var.signature_base64 STRING;
+declare local var.signature STRING;
 declare local var.public_key STRING;
-declare local var.digest_algorithm STRING;
 declare local var.is_valid BOOL;
 
 # Set the message, signature, and public key
 set var.message = req.http.X-Message;
-set var.signature_base64 = req.http.X-Signature;
+set var.signature = req.http.X-Signature;
 set var.public_key = table.lookup(public_keys, req.http.X-Key-ID);
-set var.digest_algorithm = "sha256";  # Can be sha1, sha256, etc.
 
 # Verify the RSA signature
+# First arg is a bare identifier for the hash algorithm, not a quoted string
 set var.is_valid = digest.rsa_verify(
-  var.digest_algorithm,
+  sha256,
+  var.public_key,
   var.message,
-  var.signature_base64,
-  var.public_key
+  var.signature
 );
 
 if (var.is_valid) {
@@ -611,23 +634,23 @@ This example demonstrates how to verify an ECDSA signature:
 
 ```vcl
 declare local var.ecdsa_message STRING;
-declare local var.ecdsa_signature_base64 STRING;
+declare local var.ecdsa_signature STRING;
 declare local var.ecdsa_public_key STRING;
-declare local var.ecdsa_curve STRING;
 declare local var.ecdsa_is_valid BOOL;
 
 # Set the message, signature, and public key
 set var.ecdsa_message = req.http.X-ECDSA-Message;
-set var.ecdsa_signature_base64 = req.http.X-ECDSA-Signature;
+set var.ecdsa_signature = req.http.X-ECDSA-Signature;
 set var.ecdsa_public_key = table.lookup(ecdsa_public_keys, req.http.X-ECDSA-Key-ID);
-set var.ecdsa_curve = "prime256v1";  # Common ECDSA curve
 
 # Verify the ECDSA signature
+# First arg is hash algorithm (bare identifier), fifth arg is digest format (der or jwt)
 set var.ecdsa_is_valid = digest.ecdsa_verify(
-  var.ecdsa_curve,
+  sha256,
+  var.ecdsa_public_key,
   var.ecdsa_message,
-  var.ecdsa_signature_base64,
-  var.ecdsa_public_key
+  var.ecdsa_signature,
+  der
 );
 
 if (var.ecdsa_is_valid) {
@@ -637,78 +660,70 @@ if (var.ecdsa_is_valid) {
   error 401 "Invalid ECDSA signature";
 }
 ```
+
 ## FUNCTION GROUP: TIME-BASED HMAC FUNCTIONS
 
-The following functions generate time-based HMACs, which are useful for creating time-limited tokens or signatures:
+The following functions generate time-based one-time passwords (TOTP), which are useful for creating time-limited tokens:
+
 - digest.time_hmac_sha1: Generates a time-based HMAC using SHA-1
 - digest.time_hmac_sha256: Generates a time-based HMAC using SHA-256
 - digest.time_hmac_sha512: Generates a time-based HMAC using SHA-512
-- digest.time_hmac_sha1_debug: Provides debug information for time-based HMAC using SHA-1
 
 ### FUNCTION: digest.time_hmac_sha1
 
 PURPOSE: Generates a time-based HMAC using SHA-1
-SYNTAX: digest.time_hmac_sha1(STRING key, STRING input, INTEGER window)
+SYNTAX: digest.time_hmac_sha1(STRING secret, INTEGER interval, INTEGER offset)
 
 PARAMETERS:
-- key: The secret key
-- input: The message to authenticate
-- window: The time window in seconds
 
-RETURN VALUE: The time-based HMAC-SHA1 of the input message
+- secret: The base64-encoded secret key
+- interval: The time step interval in seconds
+- offset: The number of time steps to look ahead and behind (skew)
+
+RETURN VALUE: The time-based HMAC-SHA1 token
 
 ### FUNCTION: digest.time_hmac_sha256
 
 PURPOSE: Generates a time-based HMAC using SHA-256
-SYNTAX: digest.time_hmac_sha256(STRING key, STRING input, INTEGER window)
+SYNTAX: digest.time_hmac_sha256(STRING secret, INTEGER interval, INTEGER offset)
 
 PARAMETERS:
-- key: The secret key
-- input: The message to authenticate
-- window: The time window in seconds
 
-RETURN VALUE: The time-based HMAC-SHA256 of the input message
+- secret: The base64-encoded secret key
+- interval: The time step interval in seconds
+- offset: The number of time steps to look ahead and behind (skew)
+
+RETURN VALUE: The time-based HMAC-SHA256 token
 
 ### FUNCTION: digest.time_hmac_sha512
 
 PURPOSE: Generates a time-based HMAC using SHA-512
-SYNTAX: digest.time_hmac_sha512(STRING key, STRING input, INTEGER window)
+SYNTAX: digest.time_hmac_sha512(STRING secret, INTEGER interval, INTEGER offset)
 
 PARAMETERS:
-- key: The secret key
-- input: The message to authenticate
-- window: The time window in seconds
 
-RETURN VALUE: The time-based HMAC-SHA512 of the input message
+- secret: The base64-encoded secret key
+- interval: The time step interval in seconds
+- offset: The number of time steps to look ahead and behind (skew)
 
-### FUNCTION: digest.time_hmac_sha1_debug
-
-PURPOSE: Provides debug information for time-based HMAC using SHA-1
-SYNTAX: digest.time_hmac_sha1_debug(STRING key, STRING input, INTEGER window)
-
-PARAMETERS:
-- key: The secret key
-- input: The message to authenticate
-- window: The time window in seconds
-
-RETURN VALUE: Debug information about the time-based HMAC-SHA1
+RETURN VALUE: The time-based HMAC-SHA512 token
 
 ### Examples
 
 #### Basic time-based HMAC
 
 ```vcl
-declare local var.message STRING;
-declare local var.key STRING;
-declare local var.time_window INTEGER;
+declare local var.secret STRING;
+declare local var.interval INTEGER;
+declare local var.offset INTEGER;
 declare local var.time_hmac STRING;
 
-set var.message = req.url.path;
-set var.key = "TimeBasedSecretKey";
-set var.time_window = 300;  # 5 minutes in seconds
+set var.secret = "c2VjcmV0a2V5MTIz";  # base64-encoded secret
+set var.interval = 30;  # 30-second time step
+set var.offset = 1;     # allow 1 step of skew
 
-# Generate a time-based HMAC valid for the specified window
-set var.time_hmac = digest.time_hmac_sha256(var.key, var.message, var.time_window);
+# Generate a time-based HMAC token
+set var.time_hmac = digest.time_hmac_sha256(var.secret, var.interval, var.offset);
 
 # Set the token in a header or cookie
 set req.http.X-Time-Token = var.time_hmac;
@@ -720,19 +735,17 @@ This example demonstrates how to validate a time-based token:
 
 ```vcl
 declare local var.token STRING;
-declare local var.validation_key STRING;
-declare local var.validation_message STRING;
+declare local var.secret STRING;
 declare local var.token_valid BOOL;
 
 set var.token = req.http.X-Auth-Token;
-set var.validation_key = "TimeBasedSecretKey";
-set var.validation_message = req.url.path;
+set var.secret = "c2VjcmV0a2V5MTIz";  # base64-encoded secret
 
-# Check if the token is valid for the current time
-# This implicitly checks if the token is within the time window
+# Generate the expected token for the current time step
+# Using interval=30 and offset=1 to allow some clock skew
 set var.token_valid = digest.secure_is_equal(
   var.token,
-  digest.time_hmac_sha256(var.validation_key, var.validation_message, 300)
+  digest.time_hmac_sha256(var.secret, 30, 1)
 );
 
 if (var.token_valid) {
@@ -743,34 +756,31 @@ if (var.token_valid) {
 }
 ```
 
-#### Debugging time-based HMACs
+#### Using different HMAC algorithms
 
-This example demonstrates how to debug time-based HMACs:
+This example demonstrates using SHA-1 and SHA-512 variants:
 
 ```vcl
-declare local var.debug_key STRING;
-declare local var.debug_message STRING;
-declare local var.debug_window INTEGER;
-declare local var.debug_info STRING;
+declare local var.secret STRING;
+declare local var.token_sha1 STRING;
+declare local var.token_sha512 STRING;
 
-set var.debug_key = "DebugKey";
-set var.debug_message = "TestMessage";
-set var.debug_window = 60;  # 1 minute
+set var.secret = "c2VjcmV0a2V5MTIz";  # base64-encoded secret
 
-# Get debug information about the time-based HMAC
-set var.debug_info = digest.time_hmac_sha1_debug(
-  var.debug_key,
-  var.debug_message,
-  var.debug_window
-);
+# SHA-1 based TOTP (compatible with most authenticator apps)
+set var.token_sha1 = digest.time_hmac_sha1(var.secret, 30, 1);
 
-# The debug info includes the current time bucket, expiration, etc.
-set req.http.X-HMAC-Debug = var.debug_info;
+# SHA-512 based TOTP (stronger but less common)
+set var.token_sha512 = digest.time_hmac_sha512(var.secret, 60, 0);
+
+set req.http.X-TOTP-SHA1 = var.token_sha1;
+set req.http.X-TOTP-SHA512 = var.token_sha512;
 ```
 
 ## FUNCTION GROUP: SECURE COMPARISON
 
 The following function provides a way to compare strings in a way that is resistant to timing attacks:
+
 - digest.secure_is_equal: Compares two strings securely
 
 ### FUNCTION: digest.secure_is_equal
@@ -779,6 +789,7 @@ PURPOSE: Compares two strings securely
 SYNTAX: digest.secure_is_equal(STRING a, STRING b)
 
 PARAMETERS:
+
 - a: The first string to compare
 - b: The second string to compare
 

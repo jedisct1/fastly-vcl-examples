@@ -11,12 +11,12 @@ Looks up a key in a table and returns its value as a string.
 ### Syntax
 
 ```vcl
-STRING table.lookup(STRING table_name, STRING key [, STRING default])
+STRING table.lookup(TABLE table_name, STRING key [, STRING default])
 ```
 
 ### Parameters
 
-- `table_name`: The name of the table to look up in
+- `table_name`: The table to look up in (a table identifier, not a string)
 - `key`: The key to look up
 - `default`: Optional default value to return if the key is not found
 
@@ -56,6 +56,8 @@ if (var.feature_enabled == "true") {
 } else {
   set req.http.X-New-Checkout = "disabled";
 }
+```
+
 #### API key validation
 
 ```vcl
@@ -114,18 +116,18 @@ Looks up a key in a table and returns its value as a boolean.
 ### Syntax
 
 ```vcl
-BOOL table.lookup_bool(STRING table_name, STRING key [, BOOL default])
+BOOL table.lookup_bool(TABLE table_name, STRING key, BOOL default)
 ```
 
 ### Parameters
 
-- `table_name`: The name of the table to look up in
+- `table_name`: The table to look up in (a table identifier, not a string)
 - `key`: The key to look up
-- `default`: Optional default value to return if the key is not found
+- `default`: Default value to return if the key is not found
 
 ### Return Value
 
-The value associated with the key as a boolean, or the default value if provided, or false
+The value associated with the key as a boolean, or the default value if the key is not found
 
 ### Examples
 
@@ -161,6 +163,7 @@ if (var.is_production) {
   set req.http.X-Environment = "development";
 }
 ```
+
 #### User permissions
 
 ```vcl
@@ -227,18 +230,18 @@ Looks up a key in a table and returns its value as an integer.
 ### Syntax
 
 ```vcl
-INTEGER table.lookup_integer(STRING table_name, STRING key [, INTEGER default])
+INTEGER table.lookup_integer(TABLE table_name, STRING key, INTEGER default)
 ```
 
 ### Parameters
 
-- `table_name`: The name of the table to look up in
+- `table_name`: The table to look up in (a table identifier, not a string)
 - `key`: The key to look up
-- `default`: Optional default value to return if the key is not found
+- `default`: Default value to return if the key is not found
 
 ### Return Value
 
-The value associated with the key as an integer, or the default value if provided, or 0
+The value associated with the key as an integer, or the default value if the key is not found
 
 ### Examples
 
@@ -270,6 +273,7 @@ if (req.http.Content-Type) {
   set req.http.X-Cache-TTL = var.cache_ttl;
 }
 ```
+
 #### A/B test percentage
 
 ```vcl
@@ -323,18 +327,18 @@ Looks up a key in a table and returns its value as a float.
 ### Syntax
 
 ```vcl
-FLOAT table.lookup_float(STRING table_name, STRING key [, FLOAT default])
+FLOAT table.lookup_float(TABLE table_name, STRING key, FLOAT default)
 ```
 
 ### Parameters
 
-- `table_name`: The name of the table to look up in
+- `table_name`: The table to look up in (a table identifier, not a string)
 - `key`: The key to look up
-- `default`: Optional default value to return if the key is not found
+- `default`: Default value to return if the key is not found
 
 ### Return Value
 
-The value associated with the key as a float, or the default value if provided, or 0.0
+The value associated with the key as a float, or the default value if the key is not found
 
 ### Examples
 
@@ -369,6 +373,7 @@ set var.qos_factor = table.lookup_float(qos_factors, var.service_tier, 1.0);
 # Set the QoS factor in a header
 set req.http.X-QoS-Factor = var.qos_factor;
 ```
+
 #### Currency exchange rates
 
 ```vcl
@@ -428,18 +433,18 @@ Looks up a key in a table and returns its value as an IP address.
 ### Syntax
 
 ```vcl
-IP table.lookup_ip(STRING table_name, STRING key [, IP default])
+IP table.lookup_ip(TABLE table_name, STRING key, IP default)
 ```
 
 ### Parameters
 
-- `table_name`: The name of the table to look up in
+- `table_name`: The table to look up in (a table identifier, not a string)
 - `key`: The key to look up
-- `default`: Optional default value to return if the key is not found
+- `default`: Default value to return if the key is not found
 
 ### Return Value
 
-The value associated with the key as an IP address, or the default value if provided, or 0.0.0.0
+The value associated with the key as an IP address, or the default value if the key is not found
 
 ### Examples
 
@@ -473,40 +478,49 @@ set var.geo_ip = table.lookup_ip(country_ips, var.country_code, client.ip);
 # Set the geolocation IP in a header
 set req.http.X-Geo-IP = var.geo_ip;
 ```
+
 #### IP-based routing
 
 ```vcl
 declare local var.service_name STRING;
 declare local var.service_ip IP;
+declare local var.default_ip IP;
+
+# Set a default IP to compare against
+set var.default_ip = "0.0.0.0";
 
 # Get the service name from the URL path
 if (req.url.path ~ "^/([^/]+)") {
   set var.service_name = re.group.1;
-  
+
   # Look up the IP address for this service
-  set var.service_ip = table.lookup_ip(service_ips, var.service_name);
-  
-  if (var.service_ip != "0.0.0.0") {
+  set var.service_ip = table.lookup_ip(service_ips, var.service_name, var.default_ip);
+
+  if (var.service_ip != var.default_ip) {
     # Set the service IP in a header
     set req.http.X-Service-IP = var.service_ip;
   }
 }
 ```
 
-#### IP allowlisting with subnet matching
+#### IP allowlisting
 
 ```vcl
 declare local var.client_type STRING;
-declare local var.allowed_subnet IP;
+declare local var.allowed_ip IP;
+declare local var.default_ip IP;
+
+# Set a default IP to compare against
+set var.default_ip = "0.0.0.0";
 
 # Get the client type from a header
 set var.client_type = req.http.X-Client-Type;
 
-# Look up the allowed subnet for this client type
-set var.allowed_subnet = table.lookup_ip(allowed_subnets, var.client_type);
+# Look up the allowed IP for this client type
+set var.allowed_ip = table.lookup_ip(allowed_subnets, var.client_type, var.default_ip);
 
-# Check if the client IP is in the allowed subnet
-if (var.allowed_subnet != "0.0.0.0" && client.ip ~ var.allowed_subnet) {
+# Check if the allowed IP was found (not the default)
+if (var.allowed_ip != var.default_ip) {
   set req.http.X-Client-Allowed = "true";
 } else {
   set req.http.X-Client-Allowed = "false";
@@ -518,159 +532,125 @@ if (var.allowed_subnet != "0.0.0.0" && client.ip ~ var.allowed_subnet) {
 ```vcl
 declare local var.hostname STRING;
 declare local var.resolved_ip IP;
+declare local var.default_ip IP;
+
+# Set a default IP to compare against
+set var.default_ip = "0.0.0.0";
 
 # Get the hostname from a header
 set var.hostname = req.http.Host;
 
 # Look up the IP address for this hostname
-set var.resolved_ip = table.lookup_ip(dns_overrides, var.hostname, "0.0.0.0");
+set var.resolved_ip = table.lookup_ip(dns_overrides, var.hostname, var.default_ip);
 
-if (var.resolved_ip != "0.0.0.0") {
+if (var.resolved_ip != var.default_ip) {
   # Set the resolved IP in a header
   set req.http.X-Resolved-IP = var.resolved_ip;
 }
 ```
 
-## table.lookup_time
+## table.lookup_rtime (duration lookups)
 
-Looks up a key in a table and returns its value as a time.
+Looks up a key in a table and returns its value as a relative time (duration).
 
 ### Syntax
 
 ```vcl
-TIME table.lookup_time(STRING table_name, STRING key [, TIME default])
+RTIME table.lookup_rtime(TABLE table_name, STRING key, RTIME default)
 ```
 
 ### Parameters
 
-- `table_name`: The name of the table to look up in
+- `table_name`: The table to look up in (a table identifier, not a string)
 - `key`: The key to look up
-- `default`: Optional default value to return if the key is not found
+- `default`: Default value to return if the key is not found
 
 ### Return Value
 
-The value associated with the key as a time, or the default value if provided, or 0s
+The value associated with the key as a relative time, or the default value if the key is not found
 
 ### Examples
 
-#### Maintenance windows
+#### Maintenance window durations
 
 ```vcl
-declare local var.maintenance_start TIME;
-declare local var.maintenance_end TIME;
-declare local var.current_time TIME;
+declare local var.maintenance_duration RTIME;
+declare local var.maintenance_grace RTIME;
 
-# Look up the maintenance window start and end times
-set var.maintenance_start = table.lookup_time(maintenance_windows, "start");
-set var.maintenance_end = table.lookup_time(maintenance_windows, "end");
-set var.current_time = now;
+# Look up maintenance window duration and grace period
+set var.maintenance_duration = table.lookup_rtime(maintenance_windows, "duration", 1h);
+set var.maintenance_grace = table.lookup_rtime(maintenance_windows, "grace", 5m);
 
-# Check if we're in the maintenance window
-if (var.current_time >= var.maintenance_start && var.current_time <= var.maintenance_end) {
-  set req.http.X-Maintenance-Mode = "true";
-} else {
-  set req.http.X-Maintenance-Mode = "false";
-}
+# Set maintenance headers
+set req.http.X-Maintenance-Duration = var.maintenance_duration;
+set req.http.X-Maintenance-Grace = var.maintenance_grace;
 ```
-#### Cache expiration times
+
+#### Cache expiration durations
 
 ```vcl
 declare local var.content_type STRING;
-declare local var.expiration_time TIME;
+declare local var.expiration_duration RTIME;
 
 # Get the content type from a header
 set var.content_type = req.http.Content-Type;
 
-# Look up the expiration time for this content type
-set var.expiration_time = table.lookup_time(expiration_times, var.content_type, now + 3600s);
+# Look up the expiration duration for this content type
+set var.expiration_duration = table.lookup_rtime(expiration_durations, var.content_type, 3600s);
 
-# Set the expiration time in a header
-set req.http.X-Expiration-Time = strftime("%Y-%m-%d %H:%M:%S", var.expiration_time);
+# Set the expiration duration in a header
+set req.http.X-Expiration-Duration = var.expiration_duration;
 ```
 
-#### Scheduled feature activation
+#### Feature activation delay
 
 ```vcl
 declare local var.feature_name STRING;
-declare local var.activation_time TIME;
+declare local var.activation_delay RTIME;
 
 set var.feature_name = "new_checkout";
 
-# Look up the activation time for this feature
-set var.activation_time = table.lookup_time(feature_activations, var.feature_name);
+# Look up the activation delay for this feature
+set var.activation_delay = table.lookup_rtime(feature_delays, var.feature_name, 0s);
 
-# Check if the feature should be active
-if (var.activation_time != 0s && now >= var.activation_time) {
-  set req.http.X-Feature-Active = "true";
-} else {
-  set req.http.X-Feature-Active = "false";
-}
+# Set the activation delay in a header
+set req.http.X-Activation-Delay = var.activation_delay;
 ```
 
-#### Time-based routing
+#### Route-specific timeouts
 
 ```vcl
 declare local var.route_name STRING;
-declare local var.route_start_time TIME;
-declare local var.route_end_time TIME;
+declare local var.route_timeout RTIME;
+declare local var.route_ttl RTIME;
 
 set var.route_name = "holiday_special";
 
-# Look up the start and end times for this route
-set var.route_start_time = table.lookup_time(route_times, var.route_name + ":start");
-set var.route_end_time = table.lookup_time(route_times, var.route_name + ":end");
+# Look up the timeout and TTL for this route
+set var.route_timeout = table.lookup_rtime(route_config, var.route_name + ":timeout", 30s);
+set var.route_ttl = table.lookup_rtime(route_config, var.route_name + ":ttl", 1h);
 
-# Check if the route should be active
-if (var.route_start_time != 0s && var.route_end_time != 0s &&
-    now >= var.route_start_time && now <= var.route_end_time) {
-  set req.http.X-Route-Active = "true";
-} else {
-  set req.http.X-Route-Active = "false";
-}
+# Set route configuration in headers
+set req.http.X-Route-Timeout = var.route_timeout;
+set req.http.X-Route-TTL = var.route_ttl;
 ```
 
-#### Event scheduling
+#### Event cooldown periods
 
 ```vcl
 declare local var.event_name STRING;
-declare local var.event_time TIME;
-declare local var.time_until_event INTEGER;
+declare local var.cooldown RTIME;
 
 set var.event_name = "product_launch";
 
-# Look up the time for this event
-set var.event_time = table.lookup_time(event_schedule, var.event_name);
+# Look up the cooldown period for this event
+set var.cooldown = table.lookup_rtime(event_cooldowns, var.event_name, 5m);
 
-if (var.event_time != 0s) {
-  # Calculate the time until the event in seconds
-  set var.time_until_event = var.event_time - now;
-  
-  # Set the time until the event in a header
-  set req.http.X-Time-Until-Event = var.time_until_event;
-}
+# Set the cooldown period in a header
+set req.http.X-Cooldown = var.cooldown;
 ```
 
-## table.lookup_rtime
-
-Looks up a key in a table and returns its value as a relative time.
-
-### Syntax
-
-```vcl
-RTIME table.lookup_rtime(STRING table_name, STRING key [, RTIME default])
-```
-
-### Parameters
-
-- `table_name`: The name of the table to look up in
-- `key`: The key to look up
-- `default`: Optional default value to return if the key is not found
-
-### Return Value
-
-The value associated with the key as a relative time, or the default value if provided, or 0s
-
-### Examples
+### More Examples
 
 #### Cache TTLs
 
@@ -687,6 +667,7 @@ set var.cache_ttl = table.lookup_rtime(cache_ttls, var.content_type, 1h);
 # Set the cache TTL in a header
 set req.http.X-Cache-TTL = var.cache_ttl;
 ```
+
 #### Timeout configurations
 
 ```vcl
@@ -756,18 +737,17 @@ Looks up a key in a table and returns its value as a regex.
 ### Syntax
 
 ```vcl
-REGEX table.lookup_regex(STRING table_name, STRING key [, STRING default])
+REGEX table.lookup_regex(TABLE table_name, STRING key)
 ```
 
 ### Parameters
 
-- `table_name`: The name of the table to look up in
+- `table_name`: The table to look up in (a table identifier, not a string)
 - `key`: The key to look up
-- `default`: Optional default value to return if the key is not found
 
 ### Return Value
 
-The value associated with the key as a regex, or the default value if provided, or an empty regex
+The value associated with the key as a compiled regex
 
 ### Examples
 
@@ -804,6 +784,7 @@ if (req.http.User-Agent ~ var.user_agent_pattern) {
   set req.http.X-Device-Type = var.device_type;
 }
 ```
+
 #### Content filtering
 
 ```vcl
@@ -869,17 +850,18 @@ Looks up a key in a table and returns its value as an ACL.
 ### Syntax
 
 ```vcl
-ACL table.lookup_acl(STRING table_name, STRING key)
+ACL table.lookup_acl(TABLE table_name, STRING key, ACL default)
 ```
 
 ### Parameters
 
-- `table_name`: The name of the table to look up in
+- `table_name`: The table to look up in (a table identifier, not a string)
 - `key`: The key to look up
+- `default`: Default ACL to return if the key is not found
 
 ### Return Value
 
-The value associated with the key as an ACL, or an empty ACL if not found
+The value associated with the key as an ACL, or the default ACL if the key is not found
 
 ### Examples
 
@@ -899,7 +881,7 @@ if (req.http.X-Client-Type == "internal") {
 }
 
 # Look up the ACL for this name
-set var.selected_acl = table.lookup_acl(acls, var.acl_name);
+set var.selected_acl = table.lookup_acl(acls, var.acl_name, default_acl);
 
 # Check if the client IP is in the selected ACL
 if (client.ip ~ var.selected_acl) {
@@ -919,7 +901,7 @@ declare local var.env_acl ACL;
 set var.environment = req.http.X-Environment;
 
 # Look up the ACL for this environment
-set var.env_acl = table.lookup_acl(environment_acls, var.environment);
+set var.env_acl = table.lookup_acl(environment_acls, var.environment, default_acl);
 
 # Check if the client IP is in the environment ACL
 if (client.ip ~ var.env_acl) {
@@ -928,6 +910,7 @@ if (client.ip ~ var.env_acl) {
   set req.http.X-Environment-Match = "false";
 }
 ```
+
 #### Feature-specific ACLs
 
 ```vcl
@@ -937,7 +920,7 @@ declare local var.feature_acl ACL;
 set var.feature_name = "beta";
 
 # Look up the ACL for this feature
-set var.feature_acl = table.lookup_acl(feature_acls, var.feature_name);
+set var.feature_acl = table.lookup_acl(feature_acls, var.feature_name, default_acl);
 
 # Check if the client IP is in the feature ACL
 if (client.ip ~ var.feature_acl) {
@@ -957,7 +940,7 @@ declare local var.country_acl ACL;
 set var.country_code = client.geo.country_code;
 
 # Look up the ACL for this country
-set var.country_acl = table.lookup_acl(country_acls, var.country_code);
+set var.country_acl = table.lookup_acl(country_acls, var.country_code, default_acl);
 
 # Check if the client IP is in the country ACL
 if (client.ip ~ var.country_acl) {
@@ -977,7 +960,7 @@ declare local var.role_acl ACL;
 set var.user_role = req.http.X-User-Role;
 
 # Look up the ACL for this role
-set var.role_acl = table.lookup_acl(role_acls, var.user_role);
+set var.role_acl = table.lookup_acl(role_acls, var.user_role, default_acl);
 
 # Check if the client IP is in the role ACL
 if (client.ip ~ var.role_acl) {
@@ -994,12 +977,12 @@ Checks if a key exists in a table.
 ### Syntax
 
 ```vcl
-BOOL table.contains(STRING table_name, STRING key)
+BOOL table.contains(TABLE table_name, STRING key)
 ```
 
 ### Parameters
 
-- `table_name`: The name of the table to check
+- `table_name`: The table to check (a table identifier, not a string)
 - `key`: The key to check for
 
 ### Return Value
@@ -1053,6 +1036,7 @@ if (var.feature_exists) {
   set req.http.X-Feature-Status = "not_configured";
 }
 ```
+
 #### Allowlist check
 
 ```vcl
@@ -1160,16 +1144,19 @@ sub vcl_recv {
     set var.maintenance_path_exempt = false;
     
     # Check against exempt paths
-    declare local var.exempt_paths_pattern REGEX;
-    set var.exempt_paths_pattern = table.lookup_regex(config, var.config_prefix + "maintenance_exempt_paths");
-    
-    if (var.exempt_paths_pattern != "" && req.url.path ~ var.exempt_paths_pattern) {
-      set var.maintenance_path_exempt = true;
+    # Check against exempt paths pattern from the config table
+    if (table.contains(config, var.config_prefix + "maintenance_exempt_paths")) {
+      declare local var.exempt_paths_pattern REGEX;
+      set var.exempt_paths_pattern = table.lookup_regex(config, var.config_prefix + "maintenance_exempt_paths");
+
+      if (req.url.path ~ var.exempt_paths_pattern) {
+        set var.maintenance_path_exempt = true;
+      }
     }
     
     # Check if the client IP is exempt from maintenance mode
     declare local var.maintenance_exempt_acl ACL;
-    set var.maintenance_exempt_acl = table.lookup_acl(acls, var.config_prefix + "maintenance_exempt");
+    set var.maintenance_exempt_acl = table.lookup_acl(acls, var.config_prefix + "maintenance_exempt", default_acl);
     
     if (!var.maintenance_path_exempt && !(client.ip ~ var.maintenance_exempt_acl)) {
       # Show maintenance page
@@ -1226,7 +1213,7 @@ sub vcl_recv {
   # Get the appropriate cache TTL based on the content type
   if (req.http.Content-Type) {
     # Try to get a content-type specific TTL
-    set var.cache_ttl = table.lookup_rtime(cache_ttls, var.cache_ttl_prefix + req.http.Content-Type);
+    set var.cache_ttl = table.lookup_rtime(cache_ttls, var.cache_ttl_prefix + req.http.Content-Type, 0s);
     
     if (var.cache_ttl == 0s) {
       # Fall back to default TTL

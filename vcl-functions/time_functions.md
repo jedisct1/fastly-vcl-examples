@@ -38,8 +38,8 @@ set var.current_time = now;
 set var.future_time = time.add(var.current_time, 1h);
 
 # Log the times
-log "Current time: " + strftime("%Y-%m-%d %H:%M:%S", var.current_time);
-log "Future time: " + strftime("%Y-%m-%d %H:%M:%S", var.future_time);
+log "Current time: " + strftime({"%Y-%m-%d %H:%M:%S"}, var.current_time);
+log "Future time: " + strftime({"%Y-%m-%d %H:%M:%S"}, var.future_time);
 ```
 
 #### Setting cache control headers
@@ -51,7 +51,7 @@ declare local var.expires_time TIME;
 set var.expires_time = time.add(now, 24h);
 
 # Format the expires time for the Expires header
-set req.http.X-Expires = strftime("%a, %d %b %Y %H:%M:%S GMT", var.expires_time);
+set req.http.X-Expires = strftime({"%a, %d %b %Y %H:%M:%S GMT"}, var.expires_time);
 ```
 
 #### Calculating time windows
@@ -67,8 +67,8 @@ set var.window_start = time.add(now, -1h);
 set var.window_end = time.add(now, 1h);
 
 # Log the time window
-log "Window start: " + strftime("%Y-%m-%d %H:%M:%S", var.window_start);
-log "Window end: " + strftime("%Y-%m-%d %H:%M:%S", var.window_end);
+log "Window start: " + strftime({"%Y-%m-%d %H:%M:%S"}, var.window_start);
+log "Window end: " + strftime({"%Y-%m-%d %H:%M:%S"}, var.window_end);
 ```
 
 #### Calculating retry times
@@ -80,15 +80,25 @@ declare local var.retry_count INTEGER;
 # Get retry count from a header
 set var.retry_count = std.atoi(req.http.X-Retry-Count);
 
-# Calculate exponential backoff (1s, 2s, 4s, 8s, etc.)
+# Calculate exponential backoff using if/else (1s, 2s, 4s, 8s, 16s)
 declare local var.backoff_seconds RTIME;
-set var.backoff_seconds = 1s * math.pow(2, var.retry_count);
+if (var.retry_count <= 0) {
+  set var.backoff_seconds = 1s;
+} else if (var.retry_count == 1) {
+  set var.backoff_seconds = 2s;
+} else if (var.retry_count == 2) {
+  set var.backoff_seconds = 4s;
+} else if (var.retry_count == 3) {
+  set var.backoff_seconds = 8s;
+} else {
+  set var.backoff_seconds = 16s;
+}
 
 # Calculate retry time
 set var.retry_after = time.add(now, var.backoff_seconds);
 
 # Set Retry-After header
-set req.http.X-Retry-After = strftime("%a, %d %b %Y %H:%M:%S GMT", var.retry_after);
+set req.http.X-Retry-After = strftime({"%a, %d %b %Y %H:%M:%S GMT"}, var.retry_after);
 ```
 
 #### Scheduling maintenance windows
@@ -103,11 +113,16 @@ set var.maintenance_start = time.add(now, 2h);
 set var.maintenance_end = time.add(var.maintenance_start, 1h);
 
 # Check if current time is in the maintenance window
-set var.in_maintenance = (now >= var.maintenance_start && now <= var.maintenance_end);
+# (after start AND not after end)
+if (time.is_after(now, var.maintenance_start)) {
+  if (!time.is_after(now, var.maintenance_end)) {
+    set var.in_maintenance = true;
+  }
+}
 
 # Set maintenance window headers
-set req.http.X-Maintenance-Start = strftime("%Y-%m-%d %H:%M:%S GMT", var.maintenance_start);
-set req.http.X-Maintenance-End = strftime("%Y-%m-%d %H:%M:%S GMT", var.maintenance_end);
+set req.http.X-Maintenance-Start = strftime({"%Y-%m-%d %H:%M:%S GMT"}, var.maintenance_start);
+set req.http.X-Maintenance-End = strftime({"%Y-%m-%d %H:%M:%S GMT"}, var.maintenance_end);
 set req.http.X-In-Maintenance = if(var.in_maintenance, "true", "false");
 ```
 
@@ -277,22 +292,19 @@ log "Is content expired? " + if(var.is_expired, "Yes", "No");  # Should be "Yes"
 ```vcl
 declare local var.window_start TIME;
 declare local var.window_end TIME;
-declare local var.after_start BOOL;
-declare local var.before_end BOOL;
 declare local var.in_window BOOL;
 
 # Set time window
 set var.window_start = time.add(now, -1h);  # 1 hour ago
 set var.window_end = time.add(now, 1h);     # 1 hour from now
 
-# Check if current time is after window start
-set var.after_start = time.is_after(now, var.window_start);
-
-# Check if current time is before window end
-set var.before_end = !time.is_after(now, var.window_end);
-
-# Check if current time is in the window
-set var.in_window = var.after_start && var.before_end;
+# Check if current time is in the window (after start AND before end)
+set var.in_window = false;
+if (time.is_after(now, var.window_start)) {
+  if (!time.is_after(now, var.window_end)) {
+    set var.in_window = true;
+  }
+}
 
 # Log the result
 log "Is current time in the window? " + if(var.in_window, "Yes", "No");  # Should be "Yes"
@@ -337,11 +349,12 @@ Converts a hexadecimal string to a time value.
 ### Syntax
 
 ```vcl
-TIME time.hex_to_time(STRING hex)
+TIME time.hex_to_time(INTEGER length, STRING hex)
 ```
 
 ### Parameters
 
+- `length`: Set to 0 for standard hex timestamp parsing
 - `hex`: A hexadecimal string representing a Unix timestamp
 
 ### Return Value
@@ -360,11 +373,11 @@ declare local var.time_value TIME;
 set var.hex_time = "5F7D7E98";
 
 # Convert hex to time
-set var.time_value = time.hex_to_time(var.hex_time);
+set var.time_value = time.hex_to_time(0, var.hex_time);
 
 # Log the result
 log "Hex time: " + var.hex_time;
-log "Converted time: " + strftime("%Y-%m-%d %H:%M:%S", var.time_value);
+log "Converted time: " + strftime({"%Y-%m-%d %H:%M:%S"}, var.time_value);
 ```
 
 #### Converting a timestamp from a header
@@ -378,10 +391,10 @@ set var.header_hex_time = req.http.X-Timestamp-Hex;
 
 if (var.header_hex_time) {
   # Convert hex to time
-  set var.header_time = time.hex_to_time(var.header_hex_time);
+  set var.header_time = time.hex_to_time(0, var.header_hex_time);
   
   # Set a formatted time header
-  set req.http.X-Timestamp = strftime("%Y-%m-%d %H:%M:%S", var.header_time);
+  set req.http.X-Timestamp = strftime({"%Y-%m-%d %H:%M:%S"}, var.header_time);
 }
 ```
 
@@ -396,7 +409,7 @@ declare local var.time_since_event RTIME;
 set var.event_hex_time = "5F7D7E98";  # 2020-10-07 14:29:12 UTC
 
 # Convert hex to time
-set var.event_time = time.hex_to_time(var.event_hex_time);
+set var.event_time = time.hex_to_time(0, var.event_hex_time);
 
 # Calculate time since event
 set var.time_since_event = time.sub(now, var.event_time);
@@ -416,7 +429,7 @@ declare local var.is_future BOOL;
 set var.future_hex_time = "FFFFFFFF";  # Far in the future
 
 # Convert hex to time
-set var.future_time = time.hex_to_time(var.future_hex_time);
+set var.future_time = time.hex_to_time(0, var.future_hex_time);
 
 # Check if the time is in the future
 set var.is_future = time.is_after(var.future_time, now);
@@ -438,12 +451,12 @@ set var.created_hex = "5F700000";  # Some time in 2020
 set var.updated_hex = "5F800000";  # Some later time in 2020
 
 # Convert hex to time
-set var.created_time = time.hex_to_time(var.created_hex);
-set var.updated_time = time.hex_to_time(var.updated_hex);
+set var.created_time = time.hex_to_time(0, var.created_hex);
+set var.updated_time = time.hex_to_time(0, var.updated_hex);
 
 # Log the results
-log "Created: " + strftime("%Y-%m-%d %H:%M:%S", var.created_time);
-log "Updated: " + strftime("%Y-%m-%d %H:%M:%S", var.updated_time);
+log "Created: " + strftime({"%Y-%m-%d %H:%M:%S"}, var.created_time);
+log "Updated: " + strftime({"%Y-%m-%d %H:%M:%S"}, var.updated_time);
 
 # Check which is more recent
 if (time.is_after(var.updated_time, var.created_time)) {
@@ -482,7 +495,7 @@ declare local var.formatted_time STRING;
 set var.current_time = now;
 
 # Format the time as YYYY-MM-DD HH:MM:SS
-set var.formatted_time = strftime("%Y-%m-%d %H:%M:%S", var.current_time);
+set var.formatted_time = strftime({"%Y-%m-%d %H:%M:%S"}, var.current_time);
 
 # Log the formatted time
 log "Formatted time: " + var.formatted_time;
@@ -494,11 +507,11 @@ log "Formatted time: " + var.formatted_time;
 declare local var.http_date STRING;
 
 # Format the time as an HTTP date (e.g., "Wed, 21 Oct 2015 07:28:00 GMT")
-set var.http_date = strftime("%a, %d %b %Y %H:%M:%S GMT", now);
+set var.http_date = strftime({"%a, %d %b %Y %H:%M:%S GMT"}, now);
 
 # Set headers with the formatted date
 set req.http.Date = var.http_date;
-set req.http.Expires = strftime("%a, %d %b %Y %H:%M:%S GMT", time.add(now, 24h));
+set req.http.Expires = strftime({"%a, %d %b %Y %H:%M:%S GMT"}, time.add(now, 24h));
 ```
 
 #### Different date formats
@@ -509,13 +522,13 @@ declare local var.rfc850 STRING;
 declare local var.asctime STRING;
 
 # ISO 8601 format (YYYY-MM-DDTHH:MM:SSZ)
-set var.iso8601 = strftime("%Y-%m-%dT%H:%M:%SZ", now);
+set var.iso8601 = strftime({"%Y-%m-%dT%H:%M:%SZ"}, now);
 
 # RFC 850 format (Sunday, 06-Nov-94 08:49:37 GMT)
-set var.rfc850 = strftime("%A, %d-%b-%y %H:%M:%S GMT", now);
+set var.rfc850 = strftime({"%A, %d-%b-%y %H:%M:%S GMT"}, now);
 
 # asctime format (Sun Nov  6 08:49:37 1994)
-set var.asctime = strftime("%a %b %e %H:%M:%S %Y", now);
+set var.asctime = strftime({"%a %b %e %H:%M:%S %Y"}, now);
 
 # Log the different formats
 log "ISO 8601: " + var.iso8601;
@@ -535,13 +548,13 @@ declare local var.second STRING;
 declare local var.weekday STRING;
 
 # Extract date components
-set var.year = strftime("%Y", now);
-set var.month = strftime("%m", now);
-set var.day = strftime("%d", now);
-set var.hour = strftime("%H", now);
-set var.minute = strftime("%M", now);
-set var.second = strftime("%S", now);
-set var.weekday = strftime("%A", now);
+set var.year = strftime({"%Y"}, now);
+set var.month = strftime({"%m"}, now);
+set var.day = strftime({"%d"}, now);
+set var.hour = strftime({"%H"}, now);
+set var.minute = strftime({"%M"}, now);
+set var.second = strftime({"%S"}, now);
+set var.weekday = strftime({"%A"}, now);
 
 # Log the components
 log "Year: " + var.year;
@@ -560,151 +573,14 @@ declare local var.custom_format1 STRING;
 declare local var.custom_format2 STRING;
 
 # Custom format 1: YYYYMMDD-HHMMSS
-set var.custom_format1 = strftime("%Y%m%d-%H%M%S", now);
+set var.custom_format1 = strftime({"%Y%m%d-%H%M%S"}, now);
 
 # Custom format 2: Day of year, Week of year
-set var.custom_format2 = "Day " + strftime("%j", now) + " of year, Week " + strftime("%U", now);
+set var.custom_format2 = "Day " + strftime({"%j"}, now) + " of year, Week " + strftime({"%U"}, now);
 
 # Log the custom formats
 log "Custom format 1: " + var.custom_format1;
 log "Custom format 2: " + var.custom_format2;
-```
-
-## time.zone
-
-Converts a time value to a specific timezone.
-
-### Syntax
-
-```vcl
-TIME time.zone(TIME time, STRING timezone)
-```
-
-### Parameters
-
-- `time`: The time value to convert
-- `timezone`: The timezone to convert to (e.g., "America/New_York", "Europe/London")
-
-### Return Value
-
-The time value adjusted for the specified timezone
-
-### Examples
-
-#### Basic timezone conversion
-
-```vcl
-declare local var.utc_time TIME;
-declare local var.ny_time TIME;
-declare local var.london_time TIME;
-declare local var.tokyo_time TIME;
-
-# Get the current UTC time
-set var.utc_time = now;
-
-# Convert to different timezones
-set var.ny_time = time.zone(var.utc_time, "America/New_York");
-set var.london_time = time.zone(var.utc_time, "Europe/London");
-set var.tokyo_time = time.zone(var.utc_time, "Asia/Tokyo");
-
-# Log the times in different timezones
-log "UTC time: " + strftime("%Y-%m-%d %H:%M:%S", var.utc_time);
-log "New York time: " + strftime("%Y-%m-%d %H:%M:%S", var.ny_time);
-log "London time: " + strftime("%Y-%m-%d %H:%M:%S", var.london_time);
-log "Tokyo time: " + strftime("%Y-%m-%d %H:%M:%S", var.tokyo_time);
-```
-
-#### Timezone-specific headers
-
-```vcl
-declare local var.user_timezone STRING;
-declare local var.user_time TIME;
-
-# Get user timezone from a header
-set var.user_timezone = req.http.X-User-Timezone;
-
-if (var.user_timezone) {
-  # Convert current time to user's timezone
-  set var.user_time = time.zone(now, var.user_timezone);
-  
-  # Set a header with the user's local time
-  set req.http.X-User-Local-Time = strftime("%Y-%m-%d %H:%M:%S", var.user_time);
-}
-```
-
-#### Business hours check
-
-```vcl
-declare local var.business_timezone STRING;
-declare local var.business_time TIME;
-declare local var.hour INTEGER;
-declare local var.is_business_hours BOOL;
-
-# Set business timezone
-set var.business_timezone = "America/New_York";
-
-# Convert current time to business timezone
-set var.business_time = time.zone(now, var.business_timezone);
-
-# Get the hour in the business timezone
-set var.hour = std.atoi(strftime("%H", var.business_time));
-
-# Check if it's business hours (9 AM to 5 PM)
-set var.is_business_hours = (var.hour >= 9 && var.hour < 17);
-
-# Set a header indicating business hours
-set req.http.X-Business-Hours = if(var.is_business_hours, "open", "closed");
-```
-
-#### Timezone-aware scheduling
-
-```vcl
-declare local var.event_timezone STRING;
-declare local var.event_time TIME;
-declare local var.event_local_time TIME;
-declare local var.time_until_event RTIME;
-
-# Set event details
-set var.event_timezone = "Europe/London";
-set var.event_time = time.hex_to_time("5F7D7E98");  # Some fixed time
-
-# Convert event time to local timezone
-set var.event_local_time = time.zone(var.event_time, var.event_timezone);
-
-# Calculate time until event
-set var.time_until_event = time.sub(var.event_local_time, time.zone(now, var.event_timezone));
-
-# Log event details
-log "Event time (UTC): " + strftime("%Y-%m-%d %H:%M:%S", var.event_time);
-log "Event time (local): " + strftime("%Y-%m-%d %H:%M:%S", var.event_local_time);
-log "Time until event: " + var.time_until_event + " seconds";
-```
-
-#### Multi-timezone display
-
-```vcl
-declare local var.current_utc TIME;
-declare local var.timezones STRING;
-declare local var.timezone_times STRING;
-
-# Get current UTC time
-set var.current_utc = now;
-
-# Define timezones to display
-set var.timezones = "UTC,America/New_York,Europe/London,Asia/Tokyo,Australia/Sydney";
-
-# Build a string with times in different timezones
-set var.timezone_times = "Current times: ";
-
-# This is a simplified example; in practice, you would need to handle each timezone individually
-set var.timezone_times = var.timezone_times + "UTC=" + strftime("%H:%M", var.current_utc);
-set var.timezone_times = var.timezone_times + ", NY=" + strftime("%H:%M", time.zone(var.current_utc, "America/New_York"));
-set var.timezone_times = var.timezone_times + ", London=" + strftime("%H:%M", time.zone(var.current_utc, "Europe/London"));
-set var.timezone_times = var.timezone_times + ", Tokyo=" + strftime("%H:%M", time.zone(var.current_utc, "Asia/Tokyo"));
-set var.timezone_times = var.timezone_times + ", Sydney=" + strftime("%H:%M", time.zone(var.current_utc, "Australia/Sydney"));
-
-# Log the timezone times
-log var.timezone_times;
 ```
 
 ## Integrated Example: Complete Time Management System
@@ -713,52 +589,35 @@ This example demonstrates how multiple time functions can work together to creat
 
 ```vcl
 sub vcl_recv {
-  # Step 1: Determine the user's timezone
-  declare local var.user_timezone STRING;
-  declare local var.user_time TIME;
-  
-  # Get user timezone from a header or cookie
-  if (req.http.X-User-Timezone) {
-    set var.user_timezone = req.http.X-User-Timezone;
-  } else if (req.http.Cookie:timezone) {
-    set var.user_timezone = req.http.Cookie:timezone;
-  } else {
-    # Default to UTC
-    set var.user_timezone = "UTC";
-  }
-  
-  # Convert current time to user's timezone
-  set var.user_time = time.zone(now, var.user_timezone);
-  
-  # Step 2: Format times for headers and logging
+  # Step 1: Format current time for headers and logging
   declare local var.current_utc_formatted STRING;
-  declare local var.user_time_formatted STRING;
-  
-  # Format current UTC time
-  set var.current_utc_formatted = strftime("%Y-%m-%d %H:%M:%S GMT", now);
-  
-  # Format user's local time
-  set var.user_time_formatted = strftime("%Y-%m-%d %H:%M:%S", var.user_time);
-  
-  # Set time-related headers
+
+  set var.current_utc_formatted = strftime({"%Y-%m-%d %H:%M:%S GMT"}, now);
   set req.http.X-Current-UTC = var.current_utc_formatted;
-  set req.http.X-User-Local-Time = var.user_time_formatted;
-  
-  # Step 3: Check for time-based conditions
+
+  # Step 2: Check for time-based conditions (all times are UTC)
   declare local var.hour INTEGER;
   declare local var.day_of_week INTEGER;
   declare local var.is_weekend BOOL;
   declare local var.is_business_hours BOOL;
-  
-  # Get hour and day of week in user's timezone
-  set var.hour = std.atoi(strftime("%H", var.user_time));
-  set var.day_of_week = std.atoi(strftime("%w", var.user_time));  # 0 = Sunday, 6 = Saturday
+
+  # Get hour and day of week in UTC
+  set var.hour = std.atoi(strftime({"%H"}, now));
+  set var.day_of_week = std.atoi(strftime({"%w"}, now));  # 0 = Sunday, 6 = Saturday
   
   # Check if it's a weekend
-  set var.is_weekend = (var.day_of_week == 0 || var.day_of_week == 6);
-  
+  if (var.day_of_week == 0) {
+    set var.is_weekend = true;
+  } else if (var.day_of_week == 6) {
+    set var.is_weekend = true;
+  }
+
   # Check if it's business hours (9 AM to 5 PM, Monday to Friday)
-  set var.is_business_hours = (!var.is_weekend && var.hour >= 9 && var.hour < 17);
+  if (!var.is_weekend) {
+    if (var.hour >= 9 && var.hour < 17) {
+      set var.is_business_hours = true;
+    }
+  }
   
   # Set condition headers
   set req.http.X-Is-Weekend = if(var.is_weekend, "true", "false");
@@ -790,7 +649,7 @@ sub vcl_recv {
   # Set cache-related headers
   set req.http.X-Cache-TTL = var.cache_ttl;
   set req.http.X-Grace-Period = var.grace_period;
-  set req.http.X-Expires = strftime("%a, %d %b %Y %H:%M:%S GMT", var.expires_time);
+  set req.http.X-Expires = strftime({"%a, %d %b %Y %H:%M:%S GMT"}, var.expires_time);
   
   # Step 5: Check for scheduled maintenance
   declare local var.maintenance_start TIME;
@@ -801,34 +660,31 @@ sub vcl_recv {
   # Set maintenance window (example: next Sunday from 2 AM to 4 AM UTC)
   # In practice, these would come from a configuration source
   
-  # Find the next Sunday
-  declare local var.days_until_sunday INTEGER;
-  set var.days_until_sunday = 7 - var.day_of_week;
-  if (var.days_until_sunday == 7) {
-    set var.days_until_sunday = 0;  # Today is already Sunday
-  }
-  
-  # Set maintenance start time (next Sunday at 2 AM UTC)
-  set var.maintenance_start = now;
-  set var.maintenance_start = time.add(var.maintenance_start, var.days_until_sunday * 24h);  # Add days until Sunday
-  # Reset to 2 AM on that day (simplified approach)
-  set var.maintenance_start = time.add(var.maintenance_start, 2h - var.hour * 1h);
-  
+  # Set a fixed maintenance window for demonstration
+  # In practice, these would come from a configuration table
+  set var.maintenance_start = time.add(now, 2h);
+
   # Set maintenance end time (2 hours after start)
   set var.maintenance_end = time.add(var.maintenance_start, 2h);
-  
-  # Check if maintenance is active
-  set var.maintenance_active = (now >= var.maintenance_start && now <= var.maintenance_end);
-  
+
+  # Check if maintenance is active (after start AND before end)
+  if (time.is_after(now, var.maintenance_start)) {
+    if (!time.is_after(now, var.maintenance_end)) {
+      set var.maintenance_active = true;
+    }
+  }
+
   # Calculate time until maintenance
-  if (!var.maintenance_active && time.is_after(var.maintenance_start, now)) {
-    set var.time_until_maintenance = time.sub(var.maintenance_start, now);
-    set req.http.X-Time-Until-Maintenance = var.time_until_maintenance;
+  if (!var.maintenance_active) {
+    if (time.is_after(var.maintenance_start, now)) {
+      set var.time_until_maintenance = time.sub(var.maintenance_start, now);
+      set req.http.X-Time-Until-Maintenance = var.time_until_maintenance;
+    }
   }
   
   # Set maintenance headers
-  set req.http.X-Maintenance-Start = strftime("%Y-%m-%d %H:%M:%S GMT", var.maintenance_start);
-  set req.http.X-Maintenance-End = strftime("%Y-%m-%d %H:%M:%S GMT", var.maintenance_end);
+  set req.http.X-Maintenance-Start = strftime({"%Y-%m-%d %H:%M:%S GMT"}, var.maintenance_start);
+  set req.http.X-Maintenance-End = strftime({"%Y-%m-%d %H:%M:%S GMT"}, var.maintenance_end);
   set req.http.X-Maintenance-Active = if(var.maintenance_active, "true", "false");
 }
 ```
@@ -846,9 +702,9 @@ sub vcl_recv {
    - Document the format strings used in your code
 
 3. Timezone Handling:
-   - Be explicit about timezones when working with times
-   - Use time.zone to convert between timezones
-   - Default to UTC when no timezone is specified
+   - Fastly VCL operates in UTC; there is no timezone conversion function
+   - Use UTC consistently and let the client convert to local time if needed
+   - Document that all time values are UTC
 
 4. Time Calculations:
    - Use time.add for adding time offsets

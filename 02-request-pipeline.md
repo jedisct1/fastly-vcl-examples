@@ -136,14 +136,14 @@ sub vcl_recv {
 ```vcl
 sub vcl_hash {
     # Basic information
-    hash_data(req.url);
-    hash_data(req.http.host);
-    
+    set req.hash += req.url;
+    set req.hash += req.http.host;
+
     # Different versions for mobile and desktop
     if (req.http.User-Agent ~ "Mobile") {
-        hash_data("mobile");
+        set req.hash += "mobile";
     } else {
-        hash_data("desktop");
+        set req.hash += "desktop";
     }
 }
 ```
@@ -165,7 +165,7 @@ sub vcl_hit {
     }
     
     # Use cached content even if origin is down
-    if (!req.backend.healthy && obj.ttl + obj.grace > 0s) {
+    if (!req.backend.healthy && obj.grace > 0s) {
         return(deliver);
     }
 }

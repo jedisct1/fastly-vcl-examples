@@ -154,6 +154,7 @@ set var.uuid2 = uuid.version3(var.namespace, var.name2);
 log "UUID 1: " + var.uuid1;
 log "UUID 2: " + var.uuid2;
 ```
+
 #### Generating UUIDs for different inputs
 
 ```vcl
@@ -258,6 +259,7 @@ set var.uuid_v5 = uuid.version5(var.namespace, var.name);
 log "UUID v3 (MD5): " + var.uuid_v3;
 log "UUID v5 (SHA-1): " + var.uuid_v5;
 ```
+
 #### Generating content identifiers
 
 ```vcl
@@ -313,21 +315,21 @@ set req.http.X-Cache-Key = var.cache_key;
 
 ## uuid.dns
 
-Generates a name-based UUID (version 5) using the DNS namespace.
+Returns the DNS namespace UUID constant (`6ba7b810-9dad-11d1-80b4-00c04fd430c8`). Use this with `uuid.version3()` or `uuid.version5()` to generate name-based UUIDs in the DNS namespace.
 
 ### Syntax
 
 ```vcl
-STRING uuid.dns(STRING name)
+STRING uuid.dns()
 ```
 
 ### Parameters
 
-- `name`: The name to generate the UUID from
+None
 
 ### Return Value
 
-A deterministic UUID version 5 string based on the DNS namespace and the provided name
+The DNS namespace UUID constant string
 
 ### Examples
 
@@ -341,7 +343,7 @@ declare local var.uuid STRING;
 set var.domain = "example.com";
 
 # Generate a UUID using the DNS namespace
-set var.uuid = uuid.dns(var.domain);
+set var.uuid = uuid.version5(uuid.dns(), var.domain);
 
 # Log the generated UUID
 log "DNS namespace UUID: " + var.uuid;
@@ -359,14 +361,15 @@ declare local var.uuid2 STRING;
 set var.domain1 = "example.com";
 set var.domain2 = "example.org";
 
-# Generate UUIDs for different domains
-set var.uuid1 = uuid.dns(var.domain1);
-set var.uuid2 = uuid.dns(var.domain2);
+# Generate UUIDs for different domains using the DNS namespace
+set var.uuid1 = uuid.version5(uuid.dns(), var.domain1);
+set var.uuid2 = uuid.version5(uuid.dns(), var.domain2);
 
 # Log the generated UUIDs (should be different)
 log "Domain 1 UUID: " + var.uuid1;
 log "Domain 2 UUID: " + var.uuid2;
 ```
+
 #### Generating UUIDs for subdomains
 
 ```vcl
@@ -376,8 +379,8 @@ declare local var.subdomain_uuid STRING;
 # Set subdomain
 set var.subdomain = "api.example.com";
 
-# Generate a UUID for the subdomain
-set var.subdomain_uuid = uuid.dns(var.subdomain);
+# Generate a UUID for the subdomain using the DNS namespace
+set var.subdomain_uuid = uuid.version5(uuid.dns(), var.subdomain);
 
 # Log the generated UUID
 log "Subdomain UUID: " + var.subdomain_uuid;
@@ -392,8 +395,8 @@ declare local var.host_uuid STRING;
 # Get the host from the request
 set var.host = req.http.Host;
 
-# Generate a UUID for the host
-set var.host_uuid = uuid.dns(var.host);
+# Generate a UUID for the host using the DNS namespace
+set var.host_uuid = uuid.version5(uuid.dns(), var.host);
 
 # Set the host UUID in a header
 set req.http.X-Host-UUID = var.host_uuid;
@@ -408,8 +411,8 @@ declare local var.service_uuid STRING;
 # Set service name
 set var.service_name = "auth.api.example.com";
 
-# Generate a UUID for the service
-set var.service_uuid = uuid.dns(var.service_name);
+# Generate a UUID for the service using the DNS namespace
+set var.service_uuid = uuid.version5(uuid.dns(), var.service_name);
 
 # Set the service UUID in a header
 set req.http.X-Service-UUID = var.service_uuid;
@@ -417,21 +420,21 @@ set req.http.X-Service-UUID = var.service_uuid;
 
 ## uuid.url
 
-Generates a name-based UUID (version 5) using the URL namespace.
+Returns the URL namespace UUID constant (`6ba7b811-9dad-11d1-80b4-00c04fd430c8`). Use this with `uuid.version3()` or `uuid.version5()` to generate name-based UUIDs in the URL namespace.
 
 ### Syntax
 
 ```vcl
-STRING uuid.url(STRING name)
+STRING uuid.url()
 ```
 
 ### Parameters
 
-- `name`: The name to generate the UUID from
+None
 
 ### Return Value
 
-A deterministic UUID version 5 string based on the URL namespace and the provided name
+The URL namespace UUID constant string
 
 ### Examples
 
@@ -445,7 +448,7 @@ declare local var.uuid STRING;
 set var.url = "https://example.com/path";
 
 # Generate a UUID using the URL namespace
-set var.uuid = uuid.url(var.url);
+set var.uuid = uuid.version5(uuid.url(), var.url);
 
 # Log the generated UUID
 log "URL namespace UUID: " + var.uuid;
@@ -463,14 +466,15 @@ declare local var.uuid2 STRING;
 set var.url1 = "https://example.com/path1";
 set var.url2 = "https://example.com/path2";
 
-# Generate UUIDs for different URLs
-set var.uuid1 = uuid.url(var.url1);
-set var.uuid2 = uuid.url(var.url2);
+# Generate UUIDs for different URLs using the URL namespace
+set var.uuid1 = uuid.version5(uuid.url(), var.url1);
+set var.uuid2 = uuid.version5(uuid.url(), var.url2);
 
 # Log the generated UUIDs (should be different)
 log "URL 1 UUID: " + var.uuid1;
 log "URL 2 UUID: " + var.uuid2;
 ```
+
 #### Generating a UUID for the current request URL
 
 ```vcl
@@ -480,8 +484,8 @@ declare local var.request_uuid STRING;
 # Get the full request URL
 set var.request_url = "https://" + req.http.Host + req.url;
 
-# Generate a UUID for the request URL
-set var.request_uuid = uuid.url(var.request_url);
+# Generate a UUID for the request URL using the URL namespace
+set var.request_uuid = uuid.version5(uuid.url(), var.request_url);
 
 # Set the request URL UUID in a header
 set req.http.X-URL-UUID = var.request_uuid;
@@ -499,9 +503,9 @@ declare local var.resource_uuid2 STRING;
 set var.resource_url1 = "https://example.com/api/users/123";
 set var.resource_url2 = "https://example.com/api/products/456";
 
-# Generate UUIDs for different resources
-set var.resource_uuid1 = uuid.url(var.resource_url1);
-set var.resource_uuid2 = uuid.url(var.resource_url2);
+# Generate UUIDs for different resources using the URL namespace
+set var.resource_uuid1 = uuid.version5(uuid.url(), var.resource_url1);
+set var.resource_uuid2 = uuid.version5(uuid.url(), var.resource_url2);
 
 # Log the generated UUIDs
 log "Resource 1 UUID: " + var.resource_uuid1;
@@ -517,8 +521,8 @@ declare local var.cache_key STRING;
 # Set cache URL (full URL including query parameters)
 set var.cache_url = "https://" + req.http.Host + req.url + "?" + req.url.qs;
 
-# Generate a deterministic cache key
-set var.cache_key = uuid.url(var.cache_url);
+# Generate a deterministic cache key using the URL namespace
+set var.cache_key = uuid.version5(uuid.url(), var.cache_url);
 
 # Set the cache key in a header
 set req.http.X-Cache-Key = var.cache_key;
@@ -526,21 +530,21 @@ set req.http.X-Cache-Key = var.cache_key;
 
 ## uuid.oid
 
-Generates a name-based UUID (version 5) using the OID namespace.
+Returns the OID namespace UUID constant (`6ba7b812-9dad-11d1-80b4-00c04fd430c8`). Use this with `uuid.version3()` or `uuid.version5()` to generate name-based UUIDs in the OID namespace.
 
 ### Syntax
 
 ```vcl
-STRING uuid.oid(STRING name)
+STRING uuid.oid()
 ```
 
 ### Parameters
 
-- `name`: The name to generate the UUID from
+None
 
 ### Return Value
 
-A deterministic UUID version 5 string based on the OID namespace and the provided name
+The OID namespace UUID constant string
 
 ### Examples
 
@@ -554,7 +558,7 @@ declare local var.uuid STRING;
 set var.oid = "1.3.6.1.4.1";  # Example OID
 
 # Generate a UUID using the OID namespace
-set var.uuid = uuid.oid(var.oid);
+set var.uuid = uuid.version5(uuid.oid(), var.oid);
 
 # Log the generated UUID
 log "OID namespace UUID: " + var.uuid;
@@ -572,14 +576,15 @@ declare local var.uuid2 STRING;
 set var.oid1 = "1.3.6.1.4.1.12345";
 set var.oid2 = "1.3.6.1.4.1.67890";
 
-# Generate UUIDs for different OIDs
-set var.uuid1 = uuid.oid(var.oid1);
-set var.uuid2 = uuid.oid(var.oid2);
+# Generate UUIDs for different OIDs using the OID namespace
+set var.uuid1 = uuid.version5(uuid.oid(), var.oid1);
+set var.uuid2 = uuid.version5(uuid.oid(), var.oid2);
 
 # Log the generated UUIDs (should be different)
 log "OID 1 UUID: " + var.uuid1;
 log "OID 2 UUID: " + var.uuid2;
 ```
+
 #### Generating UUIDs for enterprise-specific OIDs
 
 ```vcl
@@ -589,8 +594,8 @@ declare local var.enterprise_uuid STRING;
 # Set enterprise-specific OID
 set var.enterprise_oid = "1.3.6.1.4.1.54321.1.2.3";
 
-# Generate a UUID for the enterprise OID
-set var.enterprise_uuid = uuid.oid(var.enterprise_oid);
+# Generate a UUID for the enterprise OID using the OID namespace
+set var.enterprise_uuid = uuid.version5(uuid.oid(), var.enterprise_oid);
 
 # Log the generated UUID
 log "Enterprise OID UUID: " + var.enterprise_uuid;
@@ -605,8 +610,8 @@ declare local var.service_uuid STRING;
 # Set service OID
 set var.service_oid = "1.3.6.1.4.1.54321.service.auth";
 
-# Generate a UUID for the service OID
-set var.service_uuid = uuid.oid(var.service_oid);
+# Generate a UUID for the service OID using the OID namespace
+set var.service_uuid = uuid.version5(uuid.oid(), var.service_oid);
 
 # Set the service UUID in a header
 set req.http.X-Service-UUID = var.service_uuid;
@@ -627,8 +632,8 @@ set var.object_id = "12345";
 # Construct an OID for the object
 set var.object_oid = "1.3.6.1.4.1.54321.object." + var.object_type + "." + var.object_id;
 
-# Generate a UUID for the object OID
-set var.object_uuid = uuid.oid(var.object_oid);
+# Generate a UUID for the object OID using the OID namespace
+set var.object_uuid = uuid.version5(uuid.oid(), var.object_oid);
 
 # Set the object UUID in a header
 set req.http.X-Object-UUID = var.object_uuid;
@@ -688,6 +693,7 @@ set var.generated_is_valid = uuid.is_valid(var.generated_uuid);
 log "Generated UUID: " + var.generated_uuid;
 log "Is valid: " + if(var.generated_is_valid, "Yes", "No");
 ```
+
 #### Validating an invalid UUID
 
 ```vcl
@@ -811,6 +817,7 @@ set var.generated_is_v3 = uuid.is_version3(var.generated_uuid);
 log "Generated UUID: " + var.generated_uuid;
 log "Is version 3: " + if(var.generated_is_v3, "Yes", "No");
 ```
+
 #### Validating a UUID version 4 (should be false)
 
 ```vcl
@@ -921,6 +928,7 @@ set var.is_v4 = uuid.is_version4(var.uuid);
 log "UUID: " + var.uuid;
 log "Is version 4: " + if(var.is_v4, "Yes", "No");
 ```
+
 #### Validating a generated UUID version 4
 
 ```vcl
@@ -1046,6 +1054,7 @@ set var.is_v5 = uuid.is_version5(var.uuid);
 log "UUID: " + var.uuid;
 log "Is version 5: " + if(var.is_v5, "Yes", "No");
 ```
+
 #### Validating a generated UUID version 5
 
 ```vcl
@@ -1119,9 +1128,9 @@ declare local var.is_url_v5 BOOL;
 declare local var.is_oid_v5 BOOL;
 
 # Generate UUIDs with different namespaces
-set var.dns_uuid = uuid.dns("example.com");
-set var.url_uuid = uuid.url("https://example.com");
-set var.oid_uuid = uuid.oid("1.3.6.1.4.1");
+set var.dns_uuid = uuid.version5(uuid.dns(), "example.com");
+set var.url_uuid = uuid.version5(uuid.url(), "https://example.com");
+set var.oid_uuid = uuid.version5(uuid.oid(), "1.3.6.1.4.1");
 
 # Check if all UUIDs are version 5
 set var.is_dns_v5 = uuid.is_version5(var.dns_uuid);
@@ -1200,8 +1209,8 @@ sub vcl_recv {
   # Get the host from the request
   set var.host = req.http.Host;
   
-  # Generate a service identifier based on host
-  set var.service_id = uuid.dns(var.host);
+  # Generate a service identifier based on host using the DNS namespace
+  set var.service_id = uuid.version5(uuid.dns(), var.host);
   
   # Set the service ID in a header
   set req.http.X-Service-ID = var.service_id;
@@ -1246,7 +1255,7 @@ sub vcl_recv {
 1. UUID Generation:
    - Use uuid.version4() for random UUIDs (e.g., request IDs, correlation IDs)
    - Use uuid.version5() for deterministic UUIDs (e.g., content IDs, cache keys)
-   - Use uuid.dns(), uuid.url(), or uuid.oid() for namespace-specific UUIDs
+   - Use uuid.dns(), uuid.url(), or uuid.oid() to get namespace constants, then pass them to uuid.version3() or uuid.version5()
 
 2. UUID Validation:
    - Always validate UUIDs received from external sources
@@ -1268,4 +1277,4 @@ sub vcl_recv {
    - Content identification: Use uuid.version5() for deterministic content IDs
    - Distributed tracing: Use uuid.version4() for correlation IDs
    - Caching: Use uuid.version5() for deterministic cache keys
-   - Service identification: Use uuid.dns() for service IDs
+   - Service identification: Use uuid.version5(uuid.dns(), name) for service IDs

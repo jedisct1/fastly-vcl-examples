@@ -92,44 +92,41 @@ api_v1:
   set req.backend = F_api_v1_backend;
   goto processing_end;
 
-# API v2 processing
+# API v2 processing: falls through to regular_processing label and then processing_end
 api_v2:
   set req.http.X-API-Version = "v2";
   set req.backend = F_api_v2_backend;
-  goto processing_end;
 
 # Regular processing
 regular_processing:
-  set req.http.X-API-Version = "none";
-  set req.backend = F_default_backend;
+  if (!req.http.X-API-Version) {
+    set req.http.X-API-Version = "none";
+    set req.backend = F_default_backend;
+  }
 
 # End of processing
 processing_end:
   set req.http.X-Processing-Path-Complete = "true";
 ```
 
-#### Loop-like behavior with goto
+#### Sequential processing with goto
 
 ```vcl
-declare local var.counter INTEGER;
-set var.counter = 0;
+declare local var.status STRING;
+set var.status = "unknown";
 
-# Start of the loop
-counter_loop:
-  # Increment the counter
-  set var.counter = var.counter + 1;
-  
-  # Add the counter to a header
-  if (req.http.X-Counter) {
-    set req.http.X-Counter = req.http.X-Counter + "," + var.counter;
-  } else {
-    set req.http.X-Counter = var.counter;
-  }
-  
-  # Continue the loop if the counter is less than 5
-  if (var.counter < 5) {
-    goto counter_loop;
-  }
+# Validate the request method
+if (req.method != "GET" && req.method != "POST") {
+  set var.status = "invalid_method";
+} else if (req.url.path !~ "^/api/") {
+  # Validate the URL
+  set var.status = "invalid_path";
+} else {
+  # If we get here, the request is valid
+  set var.status = "valid";
+}
+
+set req.http.X-Validation-Status = var.status;
 ```
 
 #### Complex flow control with goto
@@ -146,7 +143,7 @@ if (req.http.Cookie:logged_in == "true") {
 # Logged-in user processing
 logged_in_user:
   set req.http.X-User-Type = "logged_in";
-  
+
   if (req.http.Cookie:user_role == "admin") {
     # Jump to admin user processing
     goto admin_user;
@@ -160,14 +157,15 @@ anonymous_user:
   set req.http.X-User-Type = "anonymous";
   goto user_end;
 
-# Admin user processing
+# Admin user processing: falls through to regular_user and then user_end
 admin_user:
   set req.http.X-User-Role = "admin";
-  goto user_end;
 
 # Regular user processing
 regular_user:
-  set req.http.X-User-Role = "regular";
+  if (!req.http.X-User-Role) {
+    set req.http.X-User-Role = "regular";
+  }
 
 # End of user processing
 user_end:
@@ -365,7 +363,7 @@ if (obj.status >= 400 && obj.status < 500) {
       <li>URL: "} + req.url + {"</li>
       <li>Method: "} + req.method + {"</li>
       <li>Status: "} + obj.status + {"</li>
-      <li>Time: "} + strftime("%Y-%m-%d %H:%M:%S", now) + {"</li>
+      <li>Time: "} + strftime({"%Y-%m-%d %H:%M:%S"}, now) + {"</li>
     </ul>
   </div>
 </body>
@@ -684,75 +682,52 @@ sub vcl_recv {
   # Step 1: Initial request processing
   # Check if this is a restarted request
   if (req.restarts > 0) {
-    # This is a restarted request, skip to the appropriate processing
+    # This is a restarted request, handle based on reason
     if (req.http.X-Restart-Reason == "auth") {
-      goto auth_restart;
+      set req.http.X-Auth-Restarted = "true";
     } else if (req.http.X-Restart-Reason == "failover") {
-      goto failover_restart;
+      set req.http.X-Failover-Restarted = "true";
     } else if (req.http.X-Restart-Reason == "normalize") {
-      goto normalize_restart;
+      set req.http.X-Normalize-Restarted = "true";
     }
   }
-  
+
   # Step 2: Check for maintenance mode
   declare local var.maintenance_mode BOOL;
-  set var.maintenance_mode = false;  # This would typically be set based on a configuration
-  
+  set var.maintenance_mode = false;
+
   if (var.maintenance_mode && req.url.path !~ "^/maintenance") {
-    # Return a 503 Service Unavailable error
     error 503 "Maintenance in progress";
   }
-  
+
   # Step 3: Check for rate limiting
   declare local var.rate_limited BOOL;
-  set var.rate_limited = false;  # This would typically be determined by rate limiting logic
-  
+  set var.rate_limited = false;
+
   if (var.rate_limited) {
-    # Return a 429 Too Many Requests error
     error 429 "Rate limit exceeded";
   }
-  
+
   # Step 4: URL normalization
   if (req.url.path ~ "/$") {
-    # Add index.html to URLs ending with /
     set req.url = req.url.path + "index.html";
     set req.http.X-Restart-Reason = "normalize";
     restart;
   }
-  
-  # Skip to the end of processing
-  goto recv_end;
-  
-  # Authentication restart processing
-  auth_restart:
-    set req.http.X-Auth-Restarted = "true";
-    goto recv_end;
-  
-  # Failover restart processing
-  failover_restart:
-    set req.http.X-Failover-Restarted = "true";
-    goto recv_end;
-  
-  # Normalize restart processing
-  normalize_restart:
-    set req.http.X-Normalize-Restarted = "true";
-    goto recv_end;
-  
-  # End of vcl_recv processing
-  recv_end:
-    # Determine the appropriate action
-    if (req.method != "GET" && req.method != "HEAD") {
-      return(pass);
-    } else {
-      return(lookup);
-    }
+
+  # Step 5: Determine the appropriate action
+  if (req.method != "GET" && req.method != "HEAD") {
+    return(pass);
+  } else {
+    return(lookup);
+  }
 }
 
 sub vcl_error {
   # Step 1: Handle specific error codes
   if (obj.status == 401) {
     # Authentication required
-    set obj.http.WWW-Authenticate = "Basic realm=\"Restricted Area\"";
+    set obj.http.WWW-Authenticate = {"Basic realm="Restricted Area""};
     set obj.http.Content-Type = "text/html; charset=utf-8";
     
     synthetic {"<!DOCTYPE html>
@@ -901,7 +876,7 @@ sub vcl_error {
       <li>URL: "} + req.url + {"</li>
       <li>Method: "} + req.method + {"</li>
       <li>Status: "} + obj.status + {"</li>
-      <li>Time: "} + strftime("%Y-%m-%d %H:%M:%S", now) + {"</li>
+      <li>Time: "} + strftime({"%Y-%m-%d %H:%M:%S"}, now) + {"</li>
     </ul>
   </div>
 </body>

@@ -1,5 +1,11 @@
 # WAF Functions
 
+> **Note:** The WAF functions documented here (`waf.block`, `waf.allow`, `waf.log`,
+> `waf.rate_limit`, `waf.rate_limit_tokens`) are **Fastly platform-specific** and are
+> not part of standard Varnish VCL. They cannot be validated or tested with falco or
+> open-source Varnish. These functions are only available in Fastly's production
+> environment when the WAF product is enabled on your service.
+
 This file demonstrates comprehensive examples of WAF (Web Application Firewall) Functions in VCL.
 These functions help implement security controls, rate limiting, and logging for protecting
 web applications from various attacks and threats.

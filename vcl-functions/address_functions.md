@@ -135,53 +135,6 @@ if (addr.is_ipv6(client.ip) && req.url ~ "^/beta/") {
 }
 ```
 
-## addr.is_unix
-
-Determines if a given address is a Unix domain socket address.
-
-### Syntax
-
-```vcl
-BOOL addr.is_unix(IP address)
-```
-
-### Parameters
-
-- `address`: An address to check
-
-### Return Value
-
-- TRUE if the address is a Unix domain socket address
-- FALSE otherwise
-
-### Examples
-
-#### Basic Unix socket detection
-
-Note: This is less common in edge computing but useful in certain scenarios:
-
-```vcl
-declare local var.is_unix BOOL;
-set var.is_unix = addr.is_unix(client.socket.address);
-```
-
-#### Backend connection type detection
-
-This example demonstrates how to detect the type of connection to a backend:
-
-```vcl
-if (addr.is_unix(bereq.backend.socket.address)) {
-  # Connection to backend is via Unix socket
-  set bereq.http.X-Backend-Socket-Type = "unix";
-} else if (addr.is_ipv4(bereq.backend.socket.address)) {
-  # Connection to backend is via IPv4
-  set bereq.http.X-Backend-Socket-Type = "ipv4";
-} else if (addr.is_ipv6(bereq.backend.socket.address)) {
-  # Connection to backend is via IPv6
-  set bereq.http.X-Backend-Socket-Type = "ipv6";
-}
-```
-
 ## addr.extract_bits
 
 Extracts a range of bits from an IP address.
@@ -301,8 +254,6 @@ sub vcl_recv {
     set var.ip_version = "ipv4";
   } else if (addr.is_ipv6(client.ip)) {
     set var.ip_version = "ipv6";
-  } else if (addr.is_unix(client.ip)) {
-    set var.ip_version = "unix";
   } else {
     set var.ip_version = "unknown";
   }

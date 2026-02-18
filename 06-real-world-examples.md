@@ -188,25 +188,25 @@ sub vcl_recv {
 # Cache key generation
 sub vcl_hash {
     # Default hash
-    hash_data(req.url);
-    
+    set req.hash += req.url;
+
     if (req.http.host) {
-        hash_data(req.http.host);
+        set req.hash += req.http.host;
     } else {
-        hash_data(server.ip);
+        set req.hash += server.ip;
     }
-    
+
     # Vary cache by device type
-    hash_data(req.http.X-Device-Type);
-    
+    set req.hash += req.http.X-Device-Type;
+
     # Vary cache by country for certain paths
     if (req.url ~ "^/products/" || req.url ~ "^/categories/") {
-        hash_data(req.http.X-Country-Code);
+        set req.hash += req.http.X-Country-Code;
     }
-    
+
     # Vary cache by A/B test group
-    hash_data(req.http.X-ABTest);
-    
+    set req.hash += req.http.X-ABTest;
+
     return(hash);
 }
 
@@ -516,19 +516,19 @@ sub vcl_recv {
 # Cache key generation
 sub vcl_hash {
     # Default hash
-    hash_data(req.url);
-    
+    set req.hash += req.url;
+
     if (req.http.host) {
-        hash_data(req.http.host);
+        set req.hash += req.http.host;
     } else {
-        hash_data(server.ip);
+        set req.hash += server.ip;
     }
-    
+
     # Vary cache by device type for articles
     if (req.url ~ "^/articles/") {
-        hash_data(req.http.X-Device-Type);
+        set req.hash += req.http.X-Device-Type;
     }
-    
+
     return(hash);
 }
 

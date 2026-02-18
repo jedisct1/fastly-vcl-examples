@@ -51,7 +51,7 @@ Compares two strings case-insensitively.
 #### Syntax
 
 ```vcl
-INTEGER std.strcasecmp(STRING string1, STRING string2)
+BOOL std.strcasecmp(STRING string1, STRING string2)
 ```
 
 #### Parameters
@@ -61,9 +61,8 @@ INTEGER std.strcasecmp(STRING string1, STRING string2)
 
 #### Return Value
 
-- 0 if the strings are equal (ignoring case)
-- Negative value if string1 is less than string2
-- Positive value if string1 is greater than string2
+- TRUE if the strings are equal (ignoring case)
+- FALSE otherwise
 
 #### Examples
 
@@ -103,21 +102,23 @@ if (var.normalized_content_type == "application/json") {
 } else if (var.normalized_content_type == "text/html") {
   set req.http.X-Content-Type = "HTML";
 }
+```
+
 ##### Case-insensitive string comparison
 
 ```vcl
 declare local var.string1 STRING;
 declare local var.string2 STRING;
-declare local var.comparison INTEGER;
+declare local var.are_equal BOOL;
 
 set var.string1 = "example";
 set var.string2 = "EXAMPLE";
 
 # Compare strings case-insensitively
-set var.comparison = std.strcasecmp(var.string1, var.string2);
+set var.are_equal = std.strcasecmp(var.string1, var.string2);
 
-# var.comparison will be 0 because the strings are equal when ignoring case
-if (var.comparison == 0) {
+# var.are_equal will be TRUE because the strings are equal when ignoring case
+if (var.are_equal) {
   log "Strings are equal (case-insensitive)";
 } else {
   log "Strings are different (case-insensitive)";
@@ -148,7 +149,7 @@ declare local var.sort_param STRING;
 declare local var.normalized_sort STRING;
 
 # Get sort parameter from query string
-set var.sort_param = querystring.get(req.url.qs, "sort");
+set var.sort_param = querystring.get(req.url, "sort");
 
 # Normalize to lowercase
 set var.normalized_sort = std.tolower(var.sort_param);
@@ -169,12 +170,12 @@ The following functions help search within strings and manipulate string content
 
 ### std.strstr
 
-Finds the first occurrence of a substring.
+Finds the first occurrence of a substring and returns the remainder of the string starting from that point.
 
 #### Syntax
 
 ```vcl
-INTEGER std.strstr(STRING haystack, STRING needle)
+STRING std.strstr(STRING haystack, STRING needle)
 ```
 
 #### Parameters
@@ -184,8 +185,8 @@ INTEGER std.strstr(STRING haystack, STRING needle)
 
 #### Return Value
 
-- The 0-based index of the first occurrence of needle in haystack
-- -1 if needle is not found in haystack
+- The substring of haystack starting at the first occurrence of needle
+- Empty string if needle is not found in haystack
 
 ### std.prefixof
 
@@ -226,6 +227,7 @@ BOOL std.suffixof(STRING suffix, STRING string)
 
 - TRUE if string ends with suffix
 - FALSE otherwise
+
 ### std.replace
 
 Replaces the first occurrence of a substring.
@@ -326,27 +328,6 @@ STRING std.strrev(STRING string)
 
 A new string with the characters in reverse order
 
-### std.strpad
-
-Pads a string to a specified length.
-
-#### Syntax
-
-```vcl
-STRING std.strpad(STRING string, INTEGER length, STRING pad, STRING direction)
-```
-
-#### Parameters
-
-- `string`: The string to pad
-- `length`: The desired length of the result
-- `pad`: The character(s) to use for padding
-- `direction`: The direction to pad ("left", "right", or "both")
-
-#### Return Value
-
-A new string padded to the specified length
-
 ### std.strrep
 
 Repeats a string a specified number of times.
@@ -373,20 +354,20 @@ A new string consisting of string repeated count times
 ```vcl
 declare local var.haystack STRING;
 declare local var.needle STRING;
-declare local var.position INTEGER;
+declare local var.result STRING;
 
 set var.haystack = "This is a test string for demonstration";
 set var.needle = "test";
 
-# Find the position of "test" in the haystack
-set var.position = std.strstr(var.haystack, var.needle);
+# Find the substring starting from "test"
+set var.result = std.strstr(var.haystack, var.needle);
 
-# var.position is 10 (0-based index)
-log "Position of '" + var.needle + "' in haystack: " + var.position;
+# var.result is "test string for demonstration"
+log "Result of strstr: " + var.result;
 
 # Check if needle was found
-if (var.position >= 0) {
-  log "Substring found at position " + var.position;
+if (var.result) {
+  log "Substring found";
 } else {
   log "Substring not found";
 }
@@ -415,6 +396,7 @@ if (var.has_json_suffix) {
   log "URL has JSON suffix";
 }
 ```
+
 ##### Replacing substrings
 
 ```vcl
@@ -455,28 +437,15 @@ log "New prefix path: " + var.new_prefix_path;
 log "New suffix path: " + var.new_suffix_path;
 ```
 
-##### String padding and repetition
+##### String repetition
 
 ```vcl
-declare local var.short_string STRING;
-declare local var.padded_left STRING;
-declare local var.padded_right STRING;
 declare local var.repeated STRING;
-
-set var.short_string = "42";
-
-# Pad left with zeros to length 5
-set var.padded_left = std.strpad(var.short_string, 5, "0", "left");
-
-# Pad right with spaces to length 10
-set var.padded_right = std.strpad(var.short_string, 10, " ", "right");
 
 # Repeat a string 3 times
 set var.repeated = std.strrep("-=", 3);
 
-log "Original: '" + var.short_string + "'";
-log "Padded left: '" + var.padded_left + "'";
-log "Padded right: '" + var.padded_right + "'";
+# var.repeated is now "-=-=-="
 log "Repeated: '" + var.repeated + "'";
 ```
 
@@ -552,19 +521,21 @@ INTEGER std.strtol(STRING string, INTEGER base)
 #### Return Value
 
 The integer value of the string in the specified base
+
 ### std.strtof
 
-Converts a string to a float with additional control.
+Converts a string to a float with a specified base.
 
 #### Syntax
 
 ```vcl
-FLOAT std.strtof(STRING string)
+FLOAT std.strtof(STRING string, INTEGER base)
 ```
 
 #### Parameters
 
 - `string`: The string to convert to a float
+- `base`: The numeric base to use (e.g., 10 for decimal)
 
 #### Return Value
 
@@ -704,6 +675,7 @@ set var.base36 = std.itoa_charset(var.decimal, "0123456789abcdefghijklmnopqrstuv
 log "Decimal: " + var.decimal;
 log "Base 36: " + var.base36;
 ```
+
 ##### Handling query parameters
 
 ```vcl
@@ -713,8 +685,8 @@ declare local var.limit_param STRING;
 declare local var.limit INTEGER;
 
 # Get pagination parameters from query string
-set var.page_param = querystring.get(req.url.qs, "page");
-set var.limit_param = querystring.get(req.url.qs, "limit");
+set var.page_param = querystring.get(req.url, "page");
+set var.limit_param = querystring.get(req.url, "limit");
 
 # Convert to integers with default values
 if (var.page_param == "") {
@@ -757,7 +729,7 @@ set var.timestamp = 1609459200;  # 2021-01-01 00:00:00 UTC
 set var.time = std.integer2time(var.timestamp);
 
 # Now we can use time functions
-set req.http.X-Formatted-Time = strftime("%Y-%m-%d %H:%M:%S", var.time);
+set req.http.X-Formatted-Time = strftime({"%Y-%m-%d %H:%M:%S"}, var.time);
 ```
 
 ## IP Address Functions
@@ -771,16 +743,17 @@ Converts a string to an IP address.
 #### Syntax
 
 ```vcl
-IP std.ip(STRING string)
+IP std.ip(STRING string, IP fallback)
 ```
 
 #### Parameters
 
 - `string`: The string representation of an IP address
+- `fallback`: The fallback IP address to use if conversion fails
 
 #### Return Value
 
-The IP address object
+The IP address object, or the fallback if conversion fails
 
 ### std.str2ip
 
@@ -789,16 +762,17 @@ Converts a string to an IPv4 address.
 #### Syntax
 
 ```vcl
-IP std.str2ip(STRING string)
+IP std.str2ip(STRING string, IP fallback)
 ```
 
 #### Parameters
 
 - `string`: The string representation of an IPv4 address
+- `fallback`: The fallback IP address to use if conversion fails
 
 #### Return Value
 
-The IPv4 address object
+The IPv4 address object, or the fallback if conversion fails
 
 ### std.anystr2ip
 
@@ -807,16 +781,17 @@ Converts a string to an IP address (IPv4 or IPv6).
 #### Syntax
 
 ```vcl
-IP std.anystr2ip(STRING string)
+IP std.anystr2ip(STRING string, IP fallback)
 ```
 
 #### Parameters
 
 - `string`: The string representation of an IP address (IPv4 or IPv6)
+- `fallback`: The fallback IP address to use if conversion fails
 
 #### Return Value
 
-The IP address object
+The IP address object, or the fallback if conversion fails
 
 ### std.ip2str
 
@@ -846,14 +821,15 @@ declare local var.ip_addr IP;
 
 set var.ip_string = "192.168.1.1";
 
-# Convert string to IP address
-set var.ip_addr = std.ip(var.ip_string);
+# Convert string to IP address (with fallback)
+set var.ip_addr = std.ip(var.ip_string, "0.0.0.0");
 
 # Now we can use IP-specific operations
 if (var.ip_addr ~ 192.168.0.0/16) {
   log "IP is in the 192.168.0.0/16 subnet";
 }
 ```
+
 ##### Different IP conversion functions
 
 ```vcl
@@ -865,11 +841,11 @@ declare local var.ipv6_addr IP;
 set var.ipv4_string = "10.0.0.1";
 set var.ipv6_string = "2001:db8::1";
 
-# Convert IPv4 string to IP
-set var.ipv4_addr = std.str2ip(var.ipv4_string);
+# Convert IPv4 string to IP (with fallback)
+set var.ipv4_addr = std.str2ip(var.ipv4_string, "0.0.0.0");
 
-# Convert any IP string (IPv4 or IPv6) to IP
-set var.ipv6_addr = std.anystr2ip(var.ipv6_string);
+# Convert any IP string (IPv4 or IPv6) to IP (with fallback)
+set var.ipv6_addr = std.anystr2ip(var.ipv6_string, "::1");
 
 # Check IP versions
 if (addr.is_ipv4(var.ipv4_addr)) {
@@ -905,8 +881,8 @@ declare local var.modified_ip STRING;
 
 set var.original_ip = "192.168.1.1";
 
-# Convert to IP object
-set var.ip_obj = std.ip(var.original_ip);
+# Convert to IP object (with fallback)
+set var.ip_obj = std.ip(var.original_ip, "0.0.0.0");
 
 # Perform IP-specific operations
 if (var.ip_obj ~ 192.168.1.0/24) {
@@ -930,8 +906,8 @@ set var.xff = req.http.X-Forwarded-For;
 if (var.xff ~ "^([^,]+)") {
   set var.client_real_ip = re.group.1;
   
-  # Convert to IP object for validation
-  set var.client_real_ip_obj = std.anystr2ip(var.client_real_ip);
+  # Convert to IP object for validation (with fallback)
+  set var.client_real_ip_obj = std.anystr2ip(var.client_real_ip, "0.0.0.0");
   
   # Check if it's a valid IP
   if (addr.is_ipv4(var.client_real_ip_obj) || addr.is_ipv6(var.client_real_ip_obj)) {
@@ -1003,6 +979,7 @@ log "Full path: " + var.full_path;
 log "Directory: " + var.directory;
 log "Filename: " + var.filename;
 ```
+
 ##### URL path manipulation
 
 ```vcl
@@ -1088,123 +1065,68 @@ if (var.path_directory == "/api") {
 
 ## Collection and Counting Functions
 
-The following functions help work with collections of values.
+The following functions help work with HTTP headers that have multiple values.
 
 ### std.collect
 
-Collects multiple values into a string.
+Collapses multiple instances of a header into a single comma-separated value. This is a statement (no return value), not a function that returns a string.
 
 #### Syntax
 
 ```vcl
-STRING std.collect(STRING value1, STRING value2, ...)
+std.collect(HEADER header)
 ```
 
 #### Parameters
 
-- `value1`, `value2`, ...: The values to collect
+- `header`: The HTTP header to collapse (e.g., `req.http.Accept`)
 
 #### Return Value
 
-A comma-separated string containing all the values
+None (modifies the header in place)
 
 ### std.count
 
-Counts the number of values in a string.
+Counts the number of comma-separated values in a header.
 
 #### Syntax
 
 ```vcl
-INTEGER std.count(STRING string)
+INTEGER std.count(HEADER header)
 ```
 
 #### Parameters
 
-- `string`: The comma-separated string to count values in
+- `header`: The HTTP header to count values in
 
 #### Return Value
 
-The number of values in the string
+The number of comma-separated values in the header
 
 #### Examples
 
-##### Collecting multiple values
+##### Collapsing duplicate headers
 
 ```vcl
-declare local var.values STRING;
+# If the request has multiple Accept headers, collapse them into one
+std.collect(req.http.Accept);
 
-# Collect multiple values into a single string
-set var.values = std.collect("value1", "value2", "value3");
-
-# var.values is now "value1,value2,value3"
-log "Collected values: " + var.values;
+# Now req.http.Accept contains all values as a single comma-separated string
+log "Accept header: " + req.http.Accept;
 ```
 
-##### Counting values in a string
+##### Counting header values
 
 ```vcl
-declare local var.count INTEGER;
-
-# Count the number of values in the string
-set var.count = std.count(var.values);
-
-# var.count is 3
-log "Number of values: " + var.count;
-```
-
-##### Collecting and counting header values
-
-```vcl
-declare local var.accept_header STRING;
 declare local var.accept_count INTEGER;
 
-# Get Accept header
-set var.accept_header = req.http.Accept;
+# First collapse the header
+std.collect(req.http.Accept);
 
 # Count the number of accepted content types
-set var.accept_count = std.count(var.accept_header);
+set var.accept_count = std.count(req.http.Accept);
 
 set req.http.X-Accept-Count = var.accept_count;
-```
-
-##### Building a list of values
-
-```vcl
-declare local var.tags STRING;
-
-# Start with an empty list
-set var.tags = "";
-
-# Add tags based on conditions
-if (req.url ~ "/api/") {
-  set var.tags = std.collect(var.tags, "api");
-}
-
-if (req.method == "POST") {
-  set var.tags = std.collect(var.tags, "write");
-} else {
-  set var.tags = std.collect(var.tags, "read");
-}
-
-if (req.http.Cookie:logged_in) {
-  set var.tags = std.collect(var.tags, "authenticated");
-}
-
-# Set the tags in a header
-set req.http.X-Request-Tags = var.tags;
-```
-
-##### Processing comma-separated values
-
-```vcl
-declare local var.csv_string STRING;
-declare local var.item_count INTEGER;
-
-set var.csv_string = "apple,banana,cherry,date";
-set var.item_count = std.count(var.csv_string);
-
-log "CSV string: " + var.csv_string;
-log "Item count: " + var.item_count;
 ```
 
 ## Integrated Example: Complete String Processing System
@@ -1239,15 +1161,23 @@ sub vcl_recv {
   declare local var.sort_param STRING;
   declare local var.page INTEGER;
   declare local var.limit INTEGER;
-  
+
   # Get and normalize query parameters
-  set var.page_param = querystring.get(req.url.qs, "page");
-  set var.limit_param = querystring.get(req.url.qs, "limit");
-  set var.sort_param = std.tolower(querystring.get(req.url.qs, "sort"));
-  
+  set var.page_param = querystring.get(req.url, "page");
+  set var.limit_param = querystring.get(req.url, "limit");
+  set var.sort_param = std.tolower(querystring.get(req.url, "sort"));
+
   # Convert page and limit to integers with validation
-  set var.page = var.page_param != "" ? std.atoi(var.page_param) : 1;
-  set var.limit = var.limit_param != "" ? std.atoi(var.limit_param) : 20;
+  if (var.page_param != "") {
+    set var.page = std.atoi(var.page_param);
+  } else {
+    set var.page = 1;
+  }
+  if (var.limit_param != "") {
+    set var.limit = std.atoi(var.limit_param);
+  } else {
+    set var.limit = 20;
+  }
   
   # Validate and normalize values
   if (var.page < 1) { set var.page = 1; }
@@ -1275,35 +1205,31 @@ sub vcl_recv {
     set var.real_client_ip = var.client_ip_str;
   }
   
-  # Step 4: Build request tags for analytics
+  # Step 4: Build request tags for analytics (using string concatenation)
   declare local var.request_tags STRING;
-  
-  # Start with an empty list
-  set var.request_tags = "";
-  
-  # Add tags based on request properties
-  # Method type
-  set var.request_tags = std.collect(var.request_tags, std.tolower(req.method));
-  
+
+  # Start with the method type
+  set var.request_tags = std.tolower(req.method);
+
   # Content type
   if (var.url_extension != "") {
-    set var.request_tags = std.collect(var.request_tags, var.url_extension);
+    set var.request_tags = var.request_tags + "," + var.url_extension;
   }
-  
+
   # API version
   if (var.url_directory ~ "^/api/v([0-9]+)") {
-    set var.request_tags = std.collect(var.request_tags, "api-v" + re.group.1);
+    set var.request_tags = var.request_tags + ",api-v" + re.group.1;
   } else if (var.url_directory ~ "^/api") {
-    set var.request_tags = std.collect(var.request_tags, "api");
+    set var.request_tags = var.request_tags + ",api";
   }
-  
+
   # Authentication status
   if (req.http.Cookie:session || req.http.Authorization) {
-    set var.request_tags = std.collect(var.request_tags, "auth");
+    set var.request_tags = var.request_tags + ",auth";
   } else {
-    set var.request_tags = std.collect(var.request_tags, "anon");
+    set var.request_tags = var.request_tags + ",anon";
   }
-  
+
   # Step 5: Set normalized request headers
   set req.http.X-URL-Directory = var.url_directory;
   set req.http.X-URL-Filename = var.url_filename;
@@ -1314,7 +1240,6 @@ sub vcl_recv {
   set req.http.X-Client-IP = var.client_ip_str;
   set req.http.X-Real-Client-IP = var.real_client_ip;
   set req.http.X-Request-Tags = var.request_tags;
-  set req.http.X-Tag-Count = std.count(var.request_tags);
 }
 ```
 
@@ -1327,7 +1252,7 @@ sub vcl_recv {
 
 2. String Manipulation:
    - Use std.replace_prefix and std.replace_suffix for URL path manipulation
-   - Use std.strpad for consistent formatting of numeric values
+   - Use std.strrep for repeating string patterns
    - Consider performance implications of string operations on large strings
 
 3. Type Conversion:
@@ -1345,10 +1270,10 @@ sub vcl_recv {
    - Extract file extensions for content type determination
    - Consider URL normalization for consistent caching and routing
 
-6. Collection Handling:
-   - Use std.collect to build comma-separated lists
-   - Use std.count to determine the number of items in a list
-   - Consider the performance impact of large collections
+6. Header Collection:
+   - Use std.collect to collapse multiple header values into one
+   - Use std.count to count comma-separated values in a header
+   - Collapse headers before counting to get accurate results
 
 7. General Best Practices:
    - Normalize inputs early in the request flow

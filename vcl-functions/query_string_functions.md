@@ -293,100 +293,81 @@ set var.normalized_qs = querystring.set(var.normalized_qs, "limit", var.limit);
 # Update the request URL with the normalized query string
 set req.url = req.url.path + "?" + var.normalized_qs;
 ```
+
 ## querystring.remove
 
-Removes a parameter from a query string.
+Removes the entire query string from a URL.
 
 ### Syntax
 
 ```vcl
-STRING querystring.remove(STRING query_string, STRING parameter_name)
+STRING querystring.remove(STRING url)
 ```
 
 ### Parameters
 
-- `query_string`: The query string to modify
-- `parameter_name`: The name of the parameter to remove
+- `url`: The URL to remove the query string from
 
 ### Return Value
 
-The modified query string with the parameter removed
+The URL with the query string removed
 
 ### Examples
 
-#### Removing a parameter from a query string
+#### Removing the query string from a URL
 
 ```vcl
-declare local var.original_qs STRING;
+declare local var.url STRING;
 declare local var.result1 STRING;
 
-set var.original_qs = "category=electronics&sort=price&page=1";
-set var.result1 = querystring.remove(var.original_qs, "sort");
+set var.url = "/products?category=electronics&sort=price&page=1";
+set var.result1 = querystring.remove(var.url);
 
-# var.result1 is now "category=electronics&page=1"
+# var.result1 is now "/products"
 log "Result 1: " + var.result1;
 ```
 
-#### Removing a parameter that appears multiple times
+#### Removing the query string from a URL without one
 
 ```vcl
-declare local var.multi_param_qs STRING;
 declare local var.result2 STRING;
 
-set var.multi_param_qs = "tag=red&tag=blue&tag=green&category=colors";
-set var.result2 = querystring.remove(var.multi_param_qs, "tag");
+set var.result2 = querystring.remove("/products");
 
-# var.result2 is now "category=colors"
-# Note: All instances of the parameter are removed
+# var.result2 is unchanged: "/products"
 log "Result 2: " + var.result2;
 ```
 
-#### Removing a parameter that doesn't exist
+#### Practical application - stripping query strings for clean cache keys
 
 ```vcl
-declare local var.result3 STRING;
+declare local var.clean_url STRING;
 
-set var.result3 = querystring.remove(var.original_qs, "nonexistent");
+# Remove the entire query string from the request URL
+set var.clean_url = querystring.remove(req.url);
 
-# var.result3 is unchanged: "category=electronics&sort=price&page=1"
-log "Result 3: " + var.result3;
+# Use the clean URL as a cache key
+set req.http.X-Cache-Key = var.clean_url;
 ```
 
-#### Removing all parameters (one by one)
+#### Removing specific parameters by name
 
-```vcl
-declare local var.result4 STRING;
-
-set var.result4 = var.original_qs;
-set var.result4 = querystring.remove(var.result4, "category");
-set var.result4 = querystring.remove(var.result4, "sort");
-set var.result4 = querystring.remove(var.result4, "page");
-
-# var.result4 is now an empty string ""
-log "Result 4: '" + var.result4 + "'";
-```
-
-#### Practical application - removing tracking parameters
+To remove individual parameters by name, use `querystring.regfilter` instead:
 
 ```vcl
 declare local var.cleaned_qs STRING;
 
-# Remove common tracking parameters
-set var.cleaned_qs = req.url.qs;
-set var.cleaned_qs = querystring.remove(var.cleaned_qs, "utm_source");
-set var.cleaned_qs = querystring.remove(var.cleaned_qs, "utm_medium");
-set var.cleaned_qs = querystring.remove(var.cleaned_qs, "utm_campaign");
-set var.cleaned_qs = querystring.remove(var.cleaned_qs, "utm_term");
-set var.cleaned_qs = querystring.remove(var.cleaned_qs, "utm_content");
-set var.cleaned_qs = querystring.remove(var.cleaned_qs, "fbclid");
-set var.cleaned_qs = querystring.remove(var.cleaned_qs, "gclid");
+# Remove common tracking parameters using regfilter
+set var.cleaned_qs = req.url;
+set var.cleaned_qs = querystring.regfilter(var.cleaned_qs, "^utm_source$");
+set var.cleaned_qs = querystring.regfilter(var.cleaned_qs, "^utm_medium$");
+set var.cleaned_qs = querystring.regfilter(var.cleaned_qs, "^utm_campaign$");
+set var.cleaned_qs = querystring.regfilter(var.cleaned_qs, "^utm_term$");
+set var.cleaned_qs = querystring.regfilter(var.cleaned_qs, "^utm_content$");
+set var.cleaned_qs = querystring.regfilter(var.cleaned_qs, "^fbclid$");
+set var.cleaned_qs = querystring.regfilter(var.cleaned_qs, "^gclid$");
 
-# Update the request URL with the cleaned query string
-if (var.cleaned_qs == "") {
-  set req.url = req.url.path;
-} else {
-  set req.url = req.url.path + "?" + var.cleaned_qs;
-}
+set req.url = var.cleaned_qs;
 ```
 
 ## querystring.filter
@@ -482,6 +463,7 @@ if (var.cleaned_qs == "") {
   set req.url = req.url.path + "?" + var.cleaned_qs;
 }
 ```
+
 ## querystring.filter_except
 
 Keeps only parameters that match a regular expression pattern.
@@ -672,6 +654,7 @@ if (var.cleaned_qs == "") {
   set req.url = req.url.path + "?" + var.cleaned_qs;
 }
 ```
+
 ## querystring.globfilter_except
 
 Keeps only parameters that match a glob pattern.
@@ -932,67 +915,32 @@ set req.http.X-Cache-Key = req.url.path + "?" + var.cache_key;
 
 ## querystring.filtersep
 
-Removes parameters with a specific separator from a query string.
+Returns the separator character used between query string parameters.
 
 ### Syntax
 
 ```vcl
-STRING querystring.filtersep(STRING query_string, STRING pattern, STRING separator)
+STRING querystring.filtersep()
 ```
 
 ### Parameters
 
-- `query_string`: The query string to filter
-- `pattern`: A regular expression pattern to match parameter names against
-- `separator`: The separator character to use
+None.
 
 ### Return Value
 
-The filtered query string with matching parameters removed
+The separator character used in query strings (typically `&`).
 
 ### Examples
 
-#### Filtering parameters with a separator
+#### Getting the query string separator
 
 ```vcl
-declare local var.original_qs STRING;
-declare local var.result1 STRING;
+declare local var.sep STRING;
 
-set var.original_qs = "user.id=123&user.name=john&product.id=456";
-set var.result1 = querystring.filtersep(var.original_qs, "^user", ".");
+set var.sep = querystring.filtersep();
 
-# var.result1 is now "product.id=456"
-# Note: Parameters with prefix "user" and separator "." are removed
-log "Result 1: " + var.result1;
-```
-
-#### Filtering with a different separator
-
-```vcl
-declare local var.result2 STRING;
-
-set var.original_qs = "data[user]=john&data[product]=laptop&id=123";
-set var.result2 = querystring.filtersep(var.original_qs, "^data", "[");
-
-# var.result2 is now "id=123"
-# Note: Parameters with prefix "data" and separator "[" are removed
-log "Result 2: " + var.result2;
-```
-
-#### Practical application - filtering nested parameters
-
-```vcl
-declare local var.filtered_qs STRING;
-
-# Filter out all nested user parameters
-set var.filtered_qs = querystring.filtersep(req.url.qs, "^user", ".");
-
-# Update the request URL with the filtered query string
-if (var.filtered_qs == "") {
-  set req.url = req.url.path;
-} else {
-  set req.url = req.url.path + "?" + var.filtered_qs;
-}
+log "Query string separator: " + var.sep;
 ```
 
 ## Integrated Example: Complete Query String Management System

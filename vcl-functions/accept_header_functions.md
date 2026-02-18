@@ -67,9 +67,9 @@ if (var.selected_language == "ja") {
 This example shows how to rewrite URLs based on the selected language:
 
 ```vcl
-if (var.selected_language == "en") {
-  # No rewriting needed for English (default)
-} else if (req.url !~ "^/" + var.selected_language + "/") {
+# Regex patterns must be string literals in VCL, so we use a fixed pattern
+# that matches all available language prefixes
+if (var.selected_language != "en" && req.url !~ "^/(en|fr|de|es|it|ja)/") {
   # Rewrite URL to include language prefix
   set req.url = "/" + var.selected_language + req.url;
 }

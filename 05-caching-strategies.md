@@ -69,19 +69,19 @@ The cache key determines how objects are stored and retrieved from the cache. By
 ```vcl
 sub vcl_hash {
     # Default hash
-    hash_data(req.url);
-    
+    set req.hash += req.url;
+
     if (req.http.host) {
-        hash_data(req.http.host);
+        set req.hash += req.http.host;
     } else {
-        hash_data(server.ip);
+        set req.hash += server.ip;
     }
-    
+
     # Add custom components to the cache key
     if (req.http.X-Device-Type) {
-        hash_data(req.http.X-Device-Type);
+        set req.hash += req.http.X-Device-Type;
     }
-    
+
     return(hash);
 }
 ```
@@ -332,16 +332,16 @@ Cache sharding involves distributing cache across multiple servers based on some
 ```vcl
 sub vcl_hash {
     # Default hash
-    hash_data(req.url);
-    hash_data(req.http.host);
-    
+    set req.hash += req.url;
+    set req.hash += req.http.host;
+
     # Shard cache based on user ID
     if (req.http.Cookie ~ "user_id=([^;]+)") {
         declare local var.user_id STRING;
         set var.user_id = re.group.1;
-        hash_data(var.user_id);
+        set req.hash += var.user_id;
     }
-    
+
     return(hash);
 }
 ```
@@ -425,21 +425,21 @@ sub vcl_recv {
 
 sub vcl_hash {
     # Default hash
-    hash_data(req.url);
-    hash_data(req.http.host);
-    
+    set req.hash += req.url;
+    set req.hash += req.http.host;
+
     # Vary cache by currency
     if (req.http.X-Currency) {
-        hash_data(req.http.X-Currency);
+        set req.hash += req.http.X-Currency;
     }
-    
+
     # Vary cache by device type
     if (req.http.User-Agent ~ "Mobile|Android|iPhone") {
-        hash_data("mobile");
+        set req.hash += "mobile";
     } else {
-        hash_data("desktop");
+        set req.hash += "desktop";
     }
-    
+
     return(hash);
 }
 
@@ -521,16 +521,16 @@ sub vcl_recv {
 
 sub vcl_hash {
     # Default hash
-    hash_data(req.url);
-    hash_data(req.http.host);
-    
+    set req.hash += req.url;
+    set req.hash += req.http.host;
+
     # Vary cache by device type
     if (req.http.User-Agent ~ "Mobile|Android|iPhone") {
-        hash_data("mobile");
+        set req.hash += "mobile";
     } else {
-        hash_data("desktop");
+        set req.hash += "desktop";
     }
-    
+
     return(hash);
 }
 

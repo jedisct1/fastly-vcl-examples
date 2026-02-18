@@ -68,6 +68,7 @@ The examples also showcase 10 common VCL implementation patterns:
 ### 1. Accept Header Functions
 
 Examples for parsing and working with HTTP Accept headers, including:
+
 - Parsing Accept headers for content negotiation
 - Determining preferred media types
 - Handling quality values
@@ -76,6 +77,7 @@ Examples for parsing and working with HTTP Accept headers, including:
 ### 2. Address Functions
 
 Examples for working with IP addresses, including:
+
 - IP address validation and manipulation
 - CIDR subnet operations
 - IPv4 and IPv6 handling
@@ -84,6 +86,7 @@ Examples for working with IP addresses, including:
 ### 3. Binary Data Functions
 
 Examples for binary data operations, including:
+
 - Base64 encoding and decoding
 - Binary data manipulation
 - Handling binary streams
@@ -92,6 +95,7 @@ Examples for binary data operations, including:
 ### 4. Digest Functions
 
 Examples for cryptographic operations and encoding, including:
+
 - Hash generation (MD5, SHA-1, SHA-256)
 - HMAC operations
 - Base64 encoding/decoding
@@ -100,6 +104,7 @@ Examples for cryptographic operations and encoding, including:
 ### 5. Fastly-specific Functions
 
 Examples for Fastly-specific functionality, including:
+
 - Edge dictionary operations
 - Segmented caching
 - ESI processing
@@ -108,6 +113,7 @@ Examples for Fastly-specific functionality, including:
 ### 6. HTTP Functions
 
 Examples for HTTP request/response manipulation, including:
+
 - Header manipulation
 - Cookie handling
 - URL parsing and modification
@@ -116,6 +122,7 @@ Examples for HTTP request/response manipulation, including:
 ### 7. Math Functions
 
 Examples for mathematical operations, including:
+
 - Basic arithmetic
 - Trigonometric functions
 - Logarithmic and exponential functions
@@ -124,6 +131,7 @@ Examples for mathematical operations, including:
 ### 8. Query String Functions
 
 Examples for URL query string manipulation, including:
+
 - Parameter extraction
 - Query string parsing
 - Parameter addition, modification, and removal
@@ -132,6 +140,7 @@ Examples for URL query string manipulation, including:
 ### 9. Random Functions
 
 Examples for generating random values, including:
+
 - Random number generation
 - Random string generation
 - Weighted random selection
@@ -140,6 +149,7 @@ Examples for generating random values, including:
 ### 10. Rate Limiting Functions
 
 Examples for implementing rate limiting, including:
+
 - Token bucket algorithm
 - IP-based rate limiting
 - User-based rate limiting
@@ -148,6 +158,7 @@ Examples for implementing rate limiting, including:
 ### 11. Standard Utility Functions
 
 Examples for general utility functions, including:
+
 - String manipulation
 - Type conversion
 - Collection handling
@@ -156,6 +167,7 @@ Examples for general utility functions, including:
 ### 12. Table Functions
 
 Examples for working with lookup tables, including:
+
 - Key-value lookups
 - Table-based configuration
 - Dynamic feature flags
@@ -164,6 +176,7 @@ Examples for working with lookup tables, including:
 ### 13. Time Functions
 
 Examples for time manipulation, including:
+
 - Time formatting
 - Time zone conversion
 - Time arithmetic
@@ -172,6 +185,7 @@ Examples for time manipulation, including:
 ### 14. UUID Functions
 
 Examples for working with UUIDs, including:
+
 - UUID generation (v3, v4, v5)
 - UUID validation
 - Namespace-based UUIDs
@@ -180,6 +194,7 @@ Examples for working with UUIDs, including:
 ### 15. WAF Functions
 
 Examples for Web Application Firewall functionality, including:
+
 - Request blocking
 - Request allowing
 - WAF logging
@@ -188,6 +203,7 @@ Examples for Web Application Firewall functionality, including:
 ### 16. Miscellaneous Functions
 
 Examples for functions that don't fit other categories, including:
+
 - Flow control
 - Synthetic responses
 - Error handling

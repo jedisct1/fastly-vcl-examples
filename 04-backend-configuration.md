@@ -27,7 +27,7 @@ backend F_my_origin {
 | `.ssl` | Whether to use SSL/TLS for the connection | false |
 | `.ssl_cert_hostname` | The hostname to use for SSL certificate validation | Value of `.host` |
 | `.ssl_sni_hostname` | The hostname to use for SSL SNI | Value of `.host` |
-| `.ssl_check_cert` | Whether to validate the SSL certificate | true |
+| `.ssl_check_cert` | Whether to validate the SSL certificate | `always` |
 | `.min_tls_version` | Minimum TLS version to use | TLSv1.2 |
 | `.max_tls_version` | Maximum TLS version to use | TLSv1.3 |
 | `.connect_timeout` | Timeout for establishing a connection | 1s |
@@ -48,7 +48,7 @@ backend F_my_origin {
     .ssl = true;
     .ssl_cert_hostname = "www.example.com";
     .ssl_sni_hostname = "www.example.com";
-    .ssl_check_cert = true;
+    .ssl_check_cert = always;
     .min_tls_version = "TLSv1.2";
     .max_tls_version = "TLSv1.3";
     .connect_timeout = 1s;
@@ -174,7 +174,6 @@ The hash director selects backends based on the cache key of the content being r
 ```vcl
 director F_hash_director hash {
     .quorum = 50%;
-    .retries = 3;
     { .backend = F_origin1; .weight = 1; }
     { .backend = F_origin2; .weight = 1; }
     { .backend = F_origin3; .weight = 1; }
@@ -190,7 +189,6 @@ The client director selects a backend based on the identity of the client:
 ```vcl
 director F_client_director client {
     .quorum = 50%;
-    .retries = 3;
     { .backend = F_origin1; .weight = 1; }
     { .backend = F_origin2; .weight = 1; }
     { .backend = F_origin3; .weight = 1; }
@@ -224,7 +222,6 @@ The chash (consistent hash) director uses consistent hashing to distribute reque
 
 ```vcl
 director F_chash_director chash {
-    .key = object;
     .seed = 0;
     .vnodes_per_node = 256;
     .quorum = 50%;
@@ -243,13 +240,12 @@ Consistent hashing minimizes the redistribution of requests when backends are ad
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `.quorum` | Percentage of healthy backends required for the director to be considered healthy | 0% |
-| `.retries` | Number of times to retry selecting a backend if the first attempt fails | Number of backends |
+| `.retries` | Number of times to retry selecting a backend (random directors only) | Number of backends |
 
 ### Chash Director Parameters
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `.key` | What to hash on: `object` (cache key) or `client` (client identity) | `object` |
 | `.seed` | Starting seed for the hash function | 0 |
 | `.vnodes_per_node` | Number of virtual nodes per backend | 256 |
 
