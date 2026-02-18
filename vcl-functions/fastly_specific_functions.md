@@ -153,8 +153,6 @@ if (req.url ~ "^/app/") {
 
 ## fastly.ff.last_hop_was_serviceid
 
-> **Note:** This function is not available in all tooling environments. It is not recognized by the falco linter and may only be available on the Fastly production platform.
-
 Determines if the last hop in a Fastly-Fastly request chain was from the specified service ID.
 
 ### Syntax
