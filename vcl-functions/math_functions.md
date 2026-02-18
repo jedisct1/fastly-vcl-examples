@@ -449,9 +449,9 @@ set var.lat2 = 0.5942537985;  # Los Angeles: 34.0522 degrees
 set var.lon2 = -2.0634370689; # -118.2437 degrees
 
 # Use trig functions to compute intermediate values for the Haversine formula
-# Note: Full Haversine requires arithmetic operators (*, /, -) which are
-# valid VCL but not supported by the falco linter. Here we demonstrate the
-# individual trig function calls.
+# Note: VCL has no infix arithmetic operators (*, /, -). All arithmetic must
+# use compound assignment (+=, -=, *=, /=) with intermediate variables.
+# Here we demonstrate the individual trig function calls.
 declare local var.sin_lat1 FLOAT;
 declare local var.cos_lat1 FLOAT;
 declare local var.sin_lat2 FLOAT;
